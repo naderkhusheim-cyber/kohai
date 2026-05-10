@@ -118,6 +118,13 @@ html, body {
   z-index: 3;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
 }
+
+/* In VRM mode, the laptop sits at the bottom (in front of her hands at
+   the camera-framed chest level), not overlapping her face. */
+.kohai-container.vrm-mode .laptop {
+  bottom: 8%;
+  width: 55%;
+}
 .laptop svg { width: 100%; height: auto; display: block; }
 
 .kohai-container[data-coding="1"] .laptop {

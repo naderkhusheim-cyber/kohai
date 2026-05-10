@@ -17,9 +17,11 @@ const keystrokesEl = document.getElementById('keystrokes');
 const scene = new THREE.Scene();
 scene.background = null;
 
-const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 20);
-camera.position.set(0, 1.35, 2.4);
-camera.lookAt(0, 1.2, 0);
+const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 20);
+// Frame the upper body (chest + head + arms) — that's the action zone
+// when she's "coding". Pulled back enough to not clip in landscape too.
+camera.position.set(0, 1.25, 1.6);
+camera.lookAt(0, 1.15, 0);
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -79,6 +81,17 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
   vrm.scene.position.set(0, 0, 0);
   vrm.scene.rotation.y = Math.PI; // face the camera
   scene.add(vrm.scene);
+
+  // Sanity check: if the VRM has no humanoid (e.g. a developer constraint
+  // demo) the bones are missing and there's nothing to animate. Show a
+  // hint so the user knows to swap in a real character VRM.
+  if (!vrm.humanoid || !vrm.humanoid.getNormalizedBoneNode('head')) {
+    if (loading) {
+      loading.textContent = 'this VRM has no humanoid rig — drop a real anime VRM at assets/vrm/character.vrm';
+      loading.classList.remove('hide');
+    }
+    return;
+  }
 
   // Cache bone references for IK / pose-driving.
   const h = vrm.humanoid;

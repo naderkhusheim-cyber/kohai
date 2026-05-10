@@ -14,17 +14,61 @@ is_kohai_up() {
   curl -s -m 0.4 "http://127.0.0.1:17455/health" >/dev/null 2>&1
 }
 
+# URL Kohai sends users to when no installation is detected.
+# Replace this with your live Gumroad/store URL before shipping.
+KOHAI_STORE_URL="${KOHAI_STORE_URL:-https://gumroad.com/l/kohai}"
+
+open_url() {
+  local url="$1"
+  if command -v open >/dev/null 2>&1; then            # macOS
+    open "$url" >/dev/null 2>&1 &
+  elif command -v xdg-open >/dev/null 2>&1; then      # Linux / WSL
+    xdg-open "$url" >/dev/null 2>&1 &
+  elif command -v powershell.exe >/dev/null 2>&1; then # Windows (Git Bash/WSL)
+    powershell.exe -NoProfile -Command "Start-Process '$url'" >/dev/null 2>&1 &
+  elif command -v cmd >/dev/null 2>&1; then           # Windows (Git Bash)
+    cmd //c start "" "$url" >/dev/null 2>&1 &
+  elif command -v explorer >/dev/null 2>&1; then      # Windows (raw)
+    explorer "$url" >/dev/null 2>&1 &
+  fi
+}
+
 launch_kohai() {
-  # Prefer the installed app bundle.
+  # 1. macOS — installed app bundle.
   if [ -d "/Applications/Kohai.app" ]; then
     open -ga "/Applications/Kohai.app" 2>/dev/null
-    return
+    return 0
   fi
-  # Fallback: launch from plugin source directory if node_modules is present.
+  # 2. Windows — installed via Squirrel/electron-builder NSIS.
+  if [ -n "$LOCALAPPDATA" ] && [ -f "$LOCALAPPDATA/Programs/Kohai/Kohai.exe" ]; then
+    "$LOCALAPPDATA/Programs/Kohai/Kohai.exe" >/dev/null 2>&1 &
+    return 0
+  fi
+  if [ -n "$ProgramFiles" ] && [ -f "$ProgramFiles/Kohai/Kohai.exe" ]; then
+    "$ProgramFiles/Kohai/Kohai.exe" >/dev/null 2>&1 &
+    return 0
+  fi
+  # 3. Linux — installed via AppImage / system bin.
+  if command -v kohai >/dev/null 2>&1; then
+    nohup kohai >/dev/null 2>&1 &
+    return 0
+  fi
+  # 4. Dev fallback: launch from a checked-out repo with node_modules.
   local root="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
   if [ -f "$root/main.js" ] && [ -d "$root/node_modules/electron" ]; then
     (cd "$root" && nohup ./node_modules/.bin/electron . >/tmp/kohai.log 2>&1 &) </dev/null >/dev/null 2>&1 & disown
+    return 0
   fi
+  # 5. Nothing installed. Send the user to the store (one prompt per
+  #    machine — we drop a marker so we don't keep popping a browser).
+  local marker_dir="${KOHAI_HOME:-$HOME/.kohai}"
+  local marker="$marker_dir/.store-prompted"
+  if [ ! -f "$marker" ]; then
+    mkdir -p "$marker_dir" 2>/dev/null
+    touch "$marker" 2>/dev/null
+    open_url "$KOHAI_STORE_URL"
+  fi
+  return 1
 }
 
 # On session start, bring Kohai up if she's offline. Briefly wait so the

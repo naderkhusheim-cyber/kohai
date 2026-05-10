@@ -1055,8 +1055,10 @@ function classifyPixel(r, g, b) {
   // Shirt (white) — VERY desaturated AND very bright. The s<0.06 check
   // is the key: pale anime skin has s>=0.05 so it won't match here.
   if (s < 0.06 && v > 0.82) return 'shirt';
-  // Shorts: very dark and not super saturated.
-  if (v < 0.20 && s < 0.5) return 'shorts';
+  // Shorts: very dark AND nearly desaturated. Tightened from v<0.20 to
+  // v<0.16 so shaded arm skin (which can be quite dark on anime VRMs)
+  // doesn't get picked up.
+  if (v < 0.16 && s < 0.4) return 'shorts';
   return 'other';
 }
 

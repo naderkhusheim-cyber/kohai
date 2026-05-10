@@ -79,7 +79,10 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
   VRMUtils.removeUnnecessaryVertices(gltf.scene);
   VRMUtils.combineSkeletons(gltf.scene);
   vrm.scene.position.set(0, 0, 0);
-  vrm.scene.rotation.y = Math.PI; // face the camera
+  // VRM 1.0 already faces +Z (toward the camera) by default — only flip
+  // for legacy VRM 0.x models, which face -Z natively.
+  const isVRM0 = !!(model.meta && model.meta.metaVersion === '0' || (vrm.scene.userData && vrm.scene.userData.vrmFormat === '0.x'));
+  if (isVRM0) vrm.scene.rotation.y = Math.PI;
   scene.add(vrm.scene);
 
   // Auto-normalize model height to 1.6 m so any VRM (regardless of how it
@@ -98,15 +101,16 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
     vrm.scene.position.y -= b2.min.y;
     vrm.scene.updateMatrixWorld(true);
   }
-  // Frame upper body: lookAt chest, distance based on desired half-height.
+  // Frame the FULL body — lookAt mid-body, pull camera back enough that
+  // the whole character (plus a little margin) fits vertically.
   const finalBox = new THREE.Box3().setFromObject(vrm.scene);
   const charHeight = finalBox.max.y - finalBox.min.y;
-  const chestY = finalBox.min.y + charHeight * 0.78;
-  const halfFit = charHeight * 0.32; // upper body covers ~64% of height
+  const midY = finalBox.min.y + charHeight * 0.5;
+  const halfFit = charHeight * 0.95; // character fills ~half the canvas
   const fovRad = (camera.fov * Math.PI) / 180;
   const dist = halfFit / Math.tan(fovRad / 2);
-  camera.position.set(0, chestY, dist + 0.3);
-  camera.lookAt(0, chestY - 0.05, 0);
+  camera.position.set(0, midY + charHeight * 0.05, dist);
+  camera.lookAt(0, midY, 0);
   camera.updateProjectionMatrix();
 
   // Sanity check: if the VRM has no humanoid (e.g. a developer constraint
@@ -148,11 +152,19 @@ function setRotation(bone, x = 0, y = 0, z = 0) {
   bone.rotation.set(x, y, z);
 }
 
+// VRM humanoid bones use local axes where the upper-arm bone's +Y points
+// down its length. Rotating around local Z swings the arm forward/back;
+// rotating around local X swings up/down (mirrored for left vs. right).
+// To bring arms from T-pose down to her sides we rotate ~75° around Z.
+const REST_LEFT_UPPER_Z  = -1.30;
+const REST_RIGHT_UPPER_Z =  1.30;
+const REST_LOWER_BEND    = -0.10; // tiny natural elbow bend
+
 function applyIdlePose() {
-  setRotation(leftUpperArm,  0, 0,  0.05);
-  setRotation(rightUpperArm, 0, 0, -0.05);
-  setRotation(leftLowerArm,  0, 0, 0);
-  setRotation(rightLowerArm, 0, 0, 0);
+  setRotation(leftUpperArm,  0, 0, REST_LEFT_UPPER_Z);
+  setRotation(rightUpperArm, 0, 0, REST_RIGHT_UPPER_Z);
+  setRotation(leftLowerArm,  0, REST_LOWER_BEND, 0);
+  setRotation(rightLowerArm, 0, -REST_LOWER_BEND, 0);
   setRotation(spine, 0, 0, 0);
   setRotation(headBone, 0, 0, 0);
   if (hips) hips.position.set(0, 0, 0);
@@ -163,7 +175,7 @@ const lookTarget = new THREE.Vector3(0, 1.3, 1.5);
 let lookActive = true;
 
 // — Body rotation: smoothly turn the character toward a y-rotation target.
-let bodyTargetY = Math.PI; // facing camera by default
+let bodyTargetY = 0; // facing camera by default for VRM 1.0
 function turnTo(yRadians) { bodyTargetY = yRadians; }
 
 // — Coding mode: arms held forward over a virtual keyboard, fingers tap.
@@ -209,33 +221,35 @@ function animate() {
     }
 
     if (coding) {
-      // Arms forward, elbows bent, hands at keyboard height.
-      // Upper arm: rotated forward (around X axis ≈ -1.2)
-      const baseUpperX = -1.2;
-      const baseLowerX = -1.4;
-      const tap = Math.sin(t * 9);
-      const tapR = Math.sin(t * 9 + Math.PI);
-      setRotation(leftUpperArm,  baseUpperX + tap * 0.04, 0, 0.4);
-      setRotation(rightUpperArm, baseUpperX + tapR * 0.04, 0, -0.4);
-      setRotation(leftLowerArm,  baseLowerX, 0,  0.0);
-      setRotation(rightLowerArm, baseLowerX, 0,  0.0);
-      // Fingers tap (hand bend).
-      if (leftHand)  leftHand.rotation.x  = -0.3 + tap  * 0.25;
-      if (rightHand) rightHand.rotation.x = -0.3 + tapR * 0.25;
-      // Lean forward + look down.
-      if (spine) spine.rotation.x = -0.15 + Math.sin(t * 1.3) * 0.012;
-      if (headBone) headBone.rotation.x = 0.3;
+      // Typing pose: upper arms partially down + forward, elbows bent ~90°,
+      // hands hovering over the keyboard, fingers tapping.
+      const tap  = Math.sin(t * 10);
+      const tapR = Math.sin(t * 10 + Math.PI);
+      // Upper arms: bring forward (rotate around X) AND keep partially
+      // down at the sides (rotate around Z, less than rest pose).
+      const upperZ = 0.55; // narrower than rest's 1.30 → arms toward front
+      const upperX = -0.75 + 0.04 * tap;
+      setRotation(leftUpperArm,  upperX, 0, -upperZ);
+      setRotation(rightUpperArm, upperX, 0,  upperZ);
+      // Forearms: bent forward at the elbow.
+      setRotation(leftLowerArm,  0, -1.55, 0);
+      setRotation(rightLowerArm, 0,  1.55, 0);
+      // Hands: tap up/down like fingers hitting keys.
+      if (leftHand)  leftHand.rotation.x  = -0.2 + tap  * 0.35;
+      if (rightHand) rightHand.rotation.x = -0.2 + tapR * 0.35;
+      // Lean slightly forward, look down at the keyboard.
+      if (spine) spine.rotation.x = -0.18 + Math.sin(t * 1.3) * 0.012;
+      if (headBone) headBone.rotation.x = 0.35;
     } else {
-      // Relax to idle pose.
-      const lerpRate = Math.min(1, dt * 4);
-      [leftUpperArm, rightUpperArm, leftLowerArm, rightLowerArm].forEach((b) => {
-        if (!b) return;
-        b.rotation.x += (0 - b.rotation.x) * lerpRate;
-      });
-      if (leftUpperArm)  leftUpperArm.rotation.z  += (0.05 - leftUpperArm.rotation.z)  * lerpRate;
-      if (rightUpperArm) rightUpperArm.rotation.z += (-0.05 - rightUpperArm.rotation.z) * lerpRate;
-      if (leftHand)  leftHand.rotation.x  += (0 - leftHand.rotation.x)  * lerpRate;
-      if (rightHand) rightHand.rotation.x += (0 - rightHand.rotation.x) * lerpRate;
+      // Smoothly relax back to the resting "arms by sides" pose.
+      const lerp = Math.min(1, dt * 4);
+      const lerpTo = (b, axis, target) => { if (b) b.rotation[axis] += (target - b.rotation[axis]) * lerp; };
+      lerpTo(leftUpperArm,  'x', 0); lerpTo(leftUpperArm,  'z', REST_LEFT_UPPER_Z);
+      lerpTo(rightUpperArm, 'x', 0); lerpTo(rightUpperArm, 'z', REST_RIGHT_UPPER_Z);
+      lerpTo(leftLowerArm,  'x', 0); lerpTo(leftLowerArm,  'y', REST_LOWER_BEND);
+      lerpTo(rightLowerArm, 'x', 0); lerpTo(rightLowerArm, 'y', -REST_LOWER_BEND);
+      lerpTo(leftHand,  'x', 0);
+      lerpTo(rightHand, 'x', 0);
     }
 
     // Walking bob.
@@ -301,7 +315,7 @@ function pickLine(state) {
 function setState(state, opts = {}) {
   // VRM state mapping is mostly cosmetic — head/body angle hints.
   if (state === 'sleepy' && headBone) headBone.rotation.x = 0.5;
-  if (state === 'panic') turnTo(Math.PI + Math.sin(performance.now() / 100) * 0.3);
+  if (state === 'panic') turnTo(Math.sin(performance.now() / 100) * 0.3);
   if (!opts.silent) {
     if (opts.text) say(opts.text);
     else say(pickLine(state));

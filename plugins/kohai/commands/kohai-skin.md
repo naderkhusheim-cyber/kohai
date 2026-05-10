@@ -1,6 +1,6 @@
 ---
-description: Switch Kohai's outfit / skin (loads a different VRM model)
-argument-hint: default | school | casual | formal | sleep | <name>
+description: Switch Kohai's outfit/skin — built-in presets or custom .vrm files
+argument-hint: default | school | casual | formal | sleep | summer | hacker
 allowed-tools: ["Bash"]
 ---
 

@@ -610,6 +610,23 @@ function maybeFireRoommate() {
 
 setInterval(maybeFireRoommate, 30 * 1000); // check every 30s
 
+// Manual trigger so we can demo any roommate beat regardless of wall clock.
+const ROOMMATE_KEYS = ['ohayo', 'oyasumi', 'threeAm', 'lunchtime', 'dinnertime', 'longSession', 'longIdle', 'comeback'];
+function fireRoommate(key) {
+  const text = pickRoommateLine(key);
+  if (!text) return false;
+  const moodMap = { ohayo: 'happy', oyasumi: 'sleepy', threeAm: 'sleepy', lunchtime: 'happy', dinnertime: 'happy', longSession: 'error', longIdle: 'sleepy', comeback: 'happy' };
+  setState(moodMap[key] || 'happy', { text });
+  if (key === 'threeAm') playBehavior('facePalm');
+  if (key === 'longSession') playBehavior('stretch');
+  if (key === 'comeback') playBehavior('fistPump');
+  if (key === 'ohayo') playBehavior('bow');
+  return true;
+}
+
+// Expose for the test endpoint.
+CONTROL_HANDLERS.roommate = ({ key }) => fireRoommate(key);
+
 function runScenario(steps) {
   clearScenario();
   scenarioQueue = steps.slice();
@@ -739,6 +756,7 @@ function animate() {
     tickBlink(performance.now());
     tickExpressions(dt);
     tickLipsync();
+    tickAccessories();
 
     // Apply pose targets last — these are explicit overrides from the
     // user (via /control/pose, MCP, or scenario steps) and always win.
@@ -990,14 +1008,142 @@ const CONTROL_HANDLERS = {
   },
   skin: ({ name }) => {
     if (typeof name !== 'string') return;
-    // Default skin uses the legacy path. Other skins live in assets/vrm-skins/<name>.vrm.
-    const url = name === 'default'
-      ? '../assets/vrm/character.vrm'
-      : `../assets/vrm-skins/${name}.vrm`;
-    currentSkinUrl = url;
-    loadVRM(url);
+    applySkin(name);
   },
 };
+
+// — Programmatic skins: apply material tints + add 3D accessory primitives
+// to the existing VRM so we get visible outfit variations without needing
+// new VRM files. Real outfit DLC will swap in dedicated VRM models later;
+// this is the v1 stopgap.
+const SKIN_PRESETS = {
+  default: { tint: 0xffffff, saturation: 1.00, accessories: [] },
+  school:  { tint: 0xfff2f2, saturation: 1.05, accessories: ['redBow'] },
+  casual:  { tint: 0xe6f0ff, saturation: 0.95, accessories: ['cap'] },
+  formal:  { tint: 0xe8e8ec, saturation: 0.55, accessories: ['bowTie'] },
+  sleep:   { tint: 0xffd9ec, saturation: 0.85, accessories: ['sleepCap'] },
+  summer:  { tint: 0xfff0c8, saturation: 1.15, accessories: ['sunHat'] },
+  hacker:  { tint: 0xc8ffd0, saturation: 1.10, accessories: ['glasses'] },
+};
+
+const accessoryGroup = new THREE.Group();
+scene.add(accessoryGroup);
+
+function clearAccessories() {
+  while (accessoryGroup.children.length) {
+    const c = accessoryGroup.children.pop();
+    if (c.geometry) c.geometry.dispose();
+    if (c.material) c.material.dispose();
+  }
+}
+
+function makeAccessory(kind) {
+  // All accessories are anchored to the head bone via the animate loop.
+  let mesh;
+  switch (kind) {
+    case 'redBow': {
+      const g = new THREE.BoxGeometry(0.18, 0.04, 0.06);
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd0344a }));
+      mesh.userData.offset = new THREE.Vector3(0, 0.16, -0.02);
+      break;
+    }
+    case 'cap': {
+      const g = new THREE.SphereGeometry(0.13, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2);
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x3b6ea5 }));
+      mesh.userData.offset = new THREE.Vector3(0, 0.13, 0);
+      break;
+    }
+    case 'bowTie': {
+      const g = new THREE.BoxGeometry(0.12, 0.04, 0.03);
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x222222 }));
+      mesh.userData.offset = new THREE.Vector3(0, -0.18, 0.06);
+      break;
+    }
+    case 'sleepCap': {
+      const g = new THREE.ConeGeometry(0.13, 0.22, 16);
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xc983c6 }));
+      mesh.userData.offset = new THREE.Vector3(0.04, 0.20, 0);
+      mesh.rotation.z = -0.4;
+      break;
+    }
+    case 'sunHat': {
+      const g = new THREE.CylinderGeometry(0.18, 0.18, 0.02, 24);
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xfffae0 }));
+      mesh.userData.offset = new THREE.Vector3(0, 0.14, 0);
+      break;
+    }
+    case 'glasses': {
+      const g = new THREE.TorusGeometry(0.04, 0.008, 8, 16);
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      mesh.userData.offset = new THREE.Vector3(0, 0.0, 0.085);
+      mesh.userData.dual = true; // mirror to right side
+      break;
+    }
+  }
+  return mesh;
+}
+
+function applySkin(name) {
+  const preset = SKIN_PRESETS[name] || SKIN_PRESETS.default;
+  // Material tint + saturation on every mesh in the VRM.
+  if (vrm) {
+    vrm.scene.traverse((obj) => {
+      if (!obj.isMesh || !obj.material) return;
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      for (const m of mats) {
+        if (!m.userData.kohaiOriginalColor && m.color) {
+          m.userData.kohaiOriginalColor = m.color.clone();
+        }
+        if (m.color && m.userData.kohaiOriginalColor) {
+          const orig = m.userData.kohaiOriginalColor;
+          // Multiply original × tint, then desaturate toward gray.
+          const tint = new THREE.Color(preset.tint);
+          const out = new THREE.Color(orig.r * tint.r, orig.g * tint.g, orig.b * tint.b);
+          if (preset.saturation !== 1.0) {
+            const grey = (out.r + out.g + out.b) / 3;
+            out.r = grey + (out.r - grey) * preset.saturation;
+            out.g = grey + (out.g - grey) * preset.saturation;
+            out.b = grey + (out.b - grey) * preset.saturation;
+          }
+          m.color.copy(out);
+        }
+        m.needsUpdate = true;
+      }
+    });
+  }
+  // Swap accessories.
+  clearAccessories();
+  for (const kind of preset.accessories) {
+    const acc = makeAccessory(kind);
+    if (!acc) continue;
+    accessoryGroup.add(acc);
+    if (acc.userData.dual) {
+      const mirror = makeAccessory(kind);
+      mirror.userData.offset = acc.userData.offset.clone();
+      mirror.userData.mirror = true;
+      accessoryGroup.add(mirror);
+    }
+  }
+}
+
+// Each frame, anchor accessories to the head bone's world position.
+function tickAccessories() {
+  if (!headBone || !accessoryGroup.children.length) return;
+  const headPos = new THREE.Vector3();
+  const headQuat = new THREE.Quaternion();
+  headBone.getWorldPosition(headPos);
+  headBone.getWorldQuaternion(headQuat);
+  for (const a of accessoryGroup.children) {
+    const off = a.userData.offset || new THREE.Vector3();
+    const localOff = off.clone();
+    if (a.userData.mirror) localOff.x = 0.04; // mirror glasses lens to the right
+    else if (a.userData.dual === undefined && off.x === 0) { /* keep */ }
+    if (off.x === 0 && a.userData.dual && !a.userData.mirror) localOff.x = -0.04;
+    localOff.applyQuaternion(headQuat);
+    a.position.copy(headPos).add(localOff);
+    a.quaternion.copy(headQuat);
+  }
+}
 
 window.kohai.onEvent(({ type, data }) => {
   const h = HOOK_HANDLERS[type];

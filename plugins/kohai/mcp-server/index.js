@@ -237,10 +237,16 @@ Each step can include any of: pose (bones map), clear_pose (array of names), say
   },
   {
     name: 'kohai_skin',
-    description: 'Switch Kohai to a different outfit/skin. The "default" skin is always available; other skins require a matching .vrm file at assets/vrm-skins/<name>.vrm. Common names: default, school, casual, formal, sleep.',
+    description: 'Switch Kohai to a different outfit/skin. Built-in presets (always available, no asset files needed): default, school (red bow + warm tint), casual (cap + cool tint), formal (bow tie + grayscale), sleep (sleep cap + pink tint), summer (sun hat + warm orange), hacker (round glasses + green tint). Custom skins as .vrm files in assets/vrm-skins/ also supported.',
     inputSchema: {
       type: 'object',
-      properties: { name: { type: 'string', description: 'Skin name.' } },
+      properties: {
+        name: {
+          type: 'string',
+          enum: ['default', 'school', 'casual', 'formal', 'sleep', 'summer', 'hacker'],
+          description: 'Built-in skin preset name (or any custom <name>.vrm in assets/vrm-skins/).',
+        },
+      },
       required: ['name'],
     },
     handler: async ({ name }) => kohaiPost('skin', { name }),

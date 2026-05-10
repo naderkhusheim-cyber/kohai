@@ -808,7 +808,8 @@ function stopScenario(summary) {
       const text = summary || 'Done, senpai! Check it out~';
       setState('happy', { text });
     } },
-    { ms: 800, enter: () => { /* settle */ } },
+    { ms: 3500, enter: () => { /* hold the celebration */ } },
+    { ms: 600,  enter: () => { setState('idle', { silent: true }); } }, // back to neutral
   ]);
 }
 
@@ -840,15 +841,22 @@ const HOOK_HANDLERS = {
     if (failed) {
       setState('error', { text: 'Eh?! something broke…' });
       playBehavior('facePalm');
+      setTimeout(() => { if (currentState === 'error') setState('idle', { silent: true }); }, 4500);
       return;
     }
     if (scenarioActive) return;
     const file = basenameOf(data?.tool_input?.file_path);
     setState('happy', { text: file ? `Saved ${file}! Yatta~` : 'Done!' });
     playBehavior(pickRandom(['fistPump', 'doublePump', 'bow']));
+    // Return to idle so her face / expression don't stay frozen on happy.
+    setTimeout(() => { if (currentState === 'happy') setState('idle', { silent: true }); }, 3500);
   },
   PostToolUseFailure: () => { setState('error'); playBehavior('facePalm'); },
-  SubagentStop: () => { setState('happy', { text: 'Subagent finished!' }); playBehavior('fistPump'); },
+  SubagentStop: () => {
+    setState('happy', { text: 'Subagent finished!' });
+    playBehavior('fistPump');
+    setTimeout(() => { if (currentState === 'happy') setState('idle', { silent: true }); }, 3500);
+  },
   Stop: (data) => {
     noteActivity();
     const summary = data?.message || data?.text || '';

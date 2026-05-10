@@ -101,20 +101,20 @@ function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
 // that calls setPoseTarget / clearPoseTargets on its own schedule.
 const PROCEDURAL_ANIMS = {
   sit: () => {
-    // Cross-legged seated pose on a floor cushion. Hips drop low,
-    // upper legs swing forward + outward, knees fully fold so the
-    // shins come back under her thighs.
+    // Chair-style seated pose. Upper legs swing forward 90°, knees
+    // bend 90° so calves point straight down (no over-rotation, no
+    // splay-twist that flips the feet). Hips drop to cushion height.
     container.dataset.room = 'livingroom';
-    setPoseTarget('leftUpperLeg',  { rx: 1.10, rz:  0.55, lerp: 4 });
-    setPoseTarget('rightUpperLeg', { rx: 1.10, rz: -0.55, lerp: 4 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.95, lerp: 4 });
-    setPoseTarget('rightLowerLeg', { rx: -1.95, lerp: 4 });
+    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
+    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
+    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
     setPoseTarget('spine',         { rx: 0.05, lerp: 4 });
     setPoseTarget('leftUpperArm',  { rx: -0.3, rz: REST_LEFT_UPPER_Z + 0.1, lerp: 4 });
     setPoseTarget('rightUpperArm', { rx: -0.3, rz: REST_RIGHT_UPPER_Z - 0.1, lerp: 4 });
-    setPoseTarget('leftLowerArm',  { ry: -0.7, lerp: 4 });
-    setPoseTarget('rightLowerArm', { ry:  0.7, lerp: 4 });
-    hipsTargetY = -0.85; // sink to floor-cushion height
+    setPoseTarget('leftLowerArm',  { ry: -0.6, lerp: 4 });
+    setPoseTarget('rightLowerArm', { ry:  0.6, lerp: 4 });
+    hipsTargetY = -0.65; // sink to cushion height (more conservative)
     say('Hai, sitting down senpai~', 2500);
   },
   stand: () => {

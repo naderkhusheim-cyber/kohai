@@ -3,7 +3,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const SRC_DIR = path.resolve(__dirname, '..', 'commands');
+const SRC_DIR = path.resolve(__dirname, '..', 'plugins', 'kohai', 'commands');
 const DST_DIR = path.join(os.homedir(), '.claude', 'commands');
 
 fs.mkdirSync(DST_DIR, { recursive: true });

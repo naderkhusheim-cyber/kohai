@@ -809,8 +809,13 @@ function animate() {
     tickLipsync();
     tickAccessories();
 
-    // Apply pose targets last — these are explicit overrides from the
-    // user (via /control/pose, MCP, or scenario steps) and always win.
+    // Mixer first — it writes keyframe data into the bones.
+    if (mixer) mixer.update(dt);
+
+    // THEN apply pose targets — these are explicit overrides from the
+    // user (via /control/pose, MCP, scenario steps, procedural anim
+    // fallbacks). Running after mixer.update ensures they win even when
+    // a cached .vrma clip is still playing.
     for (const [id, target] of poseTargets) {
       const bone = getBone(id);
       if (!bone) continue;
@@ -819,8 +824,6 @@ function animate() {
       if (typeof target.ry === 'number') bone.rotation.y += (target.ry - bone.rotation.y) * lerp;
       if (typeof target.rz === 'number') bone.rotation.z += (target.rz - bone.rotation.z) * lerp;
     }
-
-    if (mixer) mixer.update(dt);
     vrm.update(dt);
   }
 
@@ -1055,12 +1058,19 @@ const CONTROL_HANDLERS = {
   clear_pose: ({ bones }) => clearPoseTargets(bones),
   play_animation: ({ name, loop, fadeMs }) => {
     if (typeof name !== 'string') return;
-    const ok = playAnimation(name, { loop: !!loop, fadeMs: fadeMs || 350 });
-    if (!ok) {
-      // Procedural fallback for known animation names when the .vrma is missing.
-      const fallback = PROCEDURAL_ANIMS[name];
-      if (fallback) fallback();
+    // If a procedural fallback exists for this name, prefer it. Mixer
+    // animations override per-frame bone rotations, so a stale cached
+    // .vrma can drown out the fallback. Cleanest UX: when both exist,
+    // run the procedural pose (predictable behavior).
+    const fallback = PROCEDURAL_ANIMS[name];
+    if (fallback) {
+      // Stop any running mixer clip so it doesn't fight the pose targets.
+      if (currentAction) { try { currentAction.stop(); } catch (_) {} currentAction = null; }
+      if (mixer) { try { mixer.stopAllAction(); } catch (_) {} }
+      fallback();
+      return;
     }
+    playAnimation(name, { loop: !!loop, fadeMs: fadeMs || 350 });
   },
   skin: ({ name }) => {
     if (typeof name !== 'string') return;

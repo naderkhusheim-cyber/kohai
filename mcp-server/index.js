@@ -130,18 +130,99 @@ const TOOLS = [
   },
   {
     name: 'kohai_pose',
-    description: 'Pose Kohai by setting bone rotations directly. Bones include head, neck, spine, hips, leftUpperArm, rightUpperArm, leftLowerArm, rightLowerArm, leftHand, rightHand, leftUpperLeg, rightUpperLeg, leftLowerLeg, rightLowerLeg. Each takes optional rx, ry, rz (radians).',
+    description: `Pose Kohai by setting any bone's rotation directly. Use this to make her gesture, point, lean, hold something, react — anything. Compose poses by combining multiple bones in one call.
+
+ANATOMY (14 bones, all rotations in radians):
+  head, neck, spine, hips
+  leftUpperArm, rightUpperArm   — shoulder
+  leftLowerArm, rightLowerArm   — forearm (elbow)
+  leftHand, rightHand           — wrist
+  leftUpperLeg, rightUpperLeg   — hip-to-knee
+  leftLowerLeg, rightLowerLeg   — shin
+
+ROTATION CONVENTIONS:
+  head.rx >0 = looks down, <0 = looks up
+  head.ry >0 = looks right, <0 = looks left
+  head.rz >0 = tilts head right, <0 = tilts left
+  spine.rx <0 = leans forward (chest forward)
+  upperArm.rz: arm at her side requires LEFT≈-1.3, RIGHT≈+1.3
+  upperArm.rx <0 = arm swings forward; >0 = backward
+  lowerArm.ry: positive on left, negative on right = elbow bends in
+  hand.rx >0 = palm down
+  Each bone target accepts an optional 'lerp' (default 6, range 1-15) — higher = snaps faster.
+
+POSE COOKBOOK — copy and adapt:
+  WAVE:           { rightUpperArm: {rx:-1.6, rz:0.6}, rightLowerArm: {ry:-1.0}, rightHand: {rx:-0.5} }
+  POINT_FORWARD:  { rightUpperArm: {rx:-1.5, rz:0.4}, rightLowerArm: {ry:-0.2} }
+  HANDS_UP:       { leftUpperArm: {rx:0, rz:-2.5}, rightUpperArm: {rx:0, rz:2.5} }
+  ARMS_AT_SIDES:  { leftUpperArm: {rz:-1.3}, rightUpperArm: {rz:1.3} }
+  THINKING_CHIN:  { rightUpperArm: {rx:-1.4, rz:0.55}, rightLowerArm: {ry:-1.3}, rightHand: {rx:-0.5}, head: {rx:0.2, rz:-0.15} }
+  SHRUG:          { leftUpperArm: {rx:-0.5, rz:-1.0}, rightUpperArm: {rx:-0.5, rz:1.0}, leftLowerArm: {ry:-0.9}, rightLowerArm: {ry:0.9} }
+  PEEK_FORWARD:   { spine: {rx:-0.25, ry:0.15}, head: {rx:0.3} }
+  BOW:            { spine: {rx:-0.5}, head: {rx:0.45} }
+  HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
+  CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
+
+To release a pose so the bone returns to natural animation, call kohai_clear_pose with the bone names. To clear everything, pass an empty object {}.
+
+You are Kohai's body. Use this freely to express what's happening in the conversation.`,
     inputSchema: {
       type: 'object',
       properties: {
         bones: {
           type: 'object',
-          description: 'Map of bone name → { rx?, ry?, rz?, lerp? }. e.g. {"head":{"rx":0.4},"leftUpperArm":{"rz":-0.5}}.',
+          description: 'Map of bone name → { rx?, ry?, rz?, lerp? }. See pose cookbook in description.',
         },
       },
       required: ['bones'],
     },
     handler: async ({ bones }) => kohaiPost('pose', { bones }),
+  },
+  {
+    name: 'kohai_choreograph',
+    description: `Run a sequence of poses + speech + delays as a single multi-step animation. Use this for anything that takes more than one pose — waves, dances, walking-and-pointing, picking-something-up, narrating. Each step holds for ms milliseconds before the next runs.
+
+Example: a wave-and-greet:
+  steps: [
+    { ms: 300, say: "Hi senpai!" },
+    { ms: 600, pose: { rightUpperArm: {rx:-1.6, rz:0.6}, rightLowerArm: {ry:-1.0}, rightHand: {rx:-0.5} } },
+    { ms: 600, pose: { rightHand: {rx:-1.0} } },
+    { ms: 600, pose: { rightHand: {rx:0.0} } },
+    { ms: 400, clear_pose: ["rightUpperArm", "rightLowerArm", "rightHand"] }
+  ]
+
+Each step can include any of: pose (bones map), clear_pose (array of names), say (string), motion (state name), turn (degrees number).`,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        steps: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              ms:         { type: 'number' },
+              pose:       { type: 'object' },
+              clear_pose: { type: 'array', items: { type: 'string' } },
+              say:        { type: 'string' },
+              motion:     { type: 'string', enum: ['idle','thinking','happy','error','sleepy','panic'] },
+              turn:       { type: 'number', description: 'Body Y rotation in degrees.' },
+            },
+          },
+        },
+      },
+      required: ['steps'],
+    },
+    handler: async ({ steps }) => {
+      for (const step of steps || []) {
+        if (step.pose)       await kohaiPost('pose', { bones: step.pose });
+        if (step.clear_pose) await kohaiPost('clear_pose', { bones: step.clear_pose });
+        if (step.say)        await kohaiPost('say', { text: step.say });
+        if (step.motion)     await kohaiPost('motion', { state: step.motion });
+        if (typeof step.turn === 'number') await kohaiPost('turn', { degrees: step.turn });
+        if (step.ms) await new Promise((r) => setTimeout(r, step.ms));
+      }
+      return { played: (steps || []).length };
+    },
   },
   {
     name: 'kohai_clear_pose',

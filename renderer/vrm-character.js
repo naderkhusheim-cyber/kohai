@@ -1024,13 +1024,15 @@ const SKIN_RECIPES = {
   hacker:  { shirt: [40, 40, 40],     shorts: [40, 40, 40],    overlay: 'code' },        // black hoodie + code
 };
 
-// HSV-based pixel classifier — keeps skin, hair, eyes intact and only
-// recolors clothing pixels.
+// HSV-based pixel classifier. Anime VRMs have very pale, low-saturation
+// skin that overlaps with "white shirt" if you're not careful. So skin
+// detection is generous (hue 5-55, sat 0.04+, val 0.55+) and the shirt
+// classifier requires near-zero saturation AND brightness AND a warmth
+// check to make sure it isn't pale skin.
 function classifyPixel(r, g, b) {
   const max = Math.max(r, g, b), min = Math.min(r, g, b);
   const v = max / 255;
   const s = max === 0 ? 0 : (max - min) / max;
-  // Hue in degrees.
   let h = 0;
   if (max !== min) {
     const d = max - min;
@@ -1039,18 +1041,22 @@ function classifyPixel(r, g, b) {
     else h = 60 * (((r - g) / d) + 4);
     if (h < 0) h += 360;
   }
-  // Skin: warm hue, mid saturation, bright. Test FIRST so it short-circuits.
-  if (h >= 10 && h <= 45 && s >= 0.15 && s <= 0.55 && v > 0.55) return 'skin';
-  // Hair: warm hue, darker.
-  if (h >= 15 && h <= 40 && v < 0.55 && s > 0.15) return 'hair';
-  // Lip / eye highlights: high saturation + warm hue.
-  if (h >= 0 && h <= 20 && s > 0.6) return 'face';
-  // Eye iris: distinctive blue/green/etc, high sat.
-  if (s > 0.5 && h >= 60 && h <= 280) return 'face';
-  // Shirt: nearly white.
-  if (s < 0.18 && v > 0.75) return 'shirt';
-  // Shorts: very dark.
-  if (v < 0.22 && s < 0.5) return 'shorts';
+  // Skin (broad — covers pale anime skin too): warm hue, ANY non-zero
+  // saturation, mid-bright. Test FIRST so it short-circuits.
+  if (h >= 5 && h <= 55 && s >= 0.04 && s <= 0.6 && v >= 0.55) return 'skin';
+  // Lip / blush — bright warm reds, very saturated.
+  if (h >= 350 || h <= 20) {
+    if (s > 0.4 && v > 0.5) return 'face';
+  }
+  // Eye iris: medium-to-strong saturation in cool hues.
+  if (s > 0.35 && h >= 60 && h <= 320 && v > 0.3) return 'face';
+  // Hair: warm hue, darker, decent saturation.
+  if (h >= 10 && h <= 50 && v < 0.6 && s > 0.18) return 'hair';
+  // Shirt (white) — VERY desaturated AND very bright. The s<0.06 check
+  // is the key: pale anime skin has s>=0.05 so it won't match here.
+  if (s < 0.06 && v > 0.82) return 'shirt';
+  // Shorts: very dark and not super saturated.
+  if (v < 0.20 && s < 0.5) return 'shorts';
   return 'other';
 }
 
@@ -1111,36 +1117,68 @@ function applyRecipeToMaterial(material, recipe) {
   }
   ctx.putImageData(out, 0, 0);
 
-  // Overlay decorations.
-  if (recipe.overlay === 'stripes') {
-    ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = 'rgba(255,150,200,0.45)';
-    for (let y = 0; y < h; y += 24) {
-      if (Math.floor(y / 24) % 2 === 0) ctx.fillRect(0, y, w, 12);
+  // Build a binary mask of clothing pixels (shirt + shorts) from the
+  // ORIGINAL pixels — used to clip overlays so they don't bleed onto
+  // skin / face / hair.
+  const mask = new Uint8Array(w * h);
+  {
+    const od = orig.data;
+    for (let i = 0, p = 0; i < od.length; i += 4, p++) {
+      const cls = classifyPixel(od[i], od[i+1], od[i+2]);
+      if (cls === 'shirt' || cls === 'shorts') mask[p] = 1;
     }
-    ctx.restore();
-  } else if (recipe.overlay === 'code') {
-    ctx.save();
-    ctx.font = `${Math.max(10, Math.round(w / 60))}px monospace`;
-    ctx.fillStyle = 'rgba(0,255,128,0.55)';
-    const chars = '01;{}<>=>fnletconst';
-    for (let y = 18; y < h; y += 22) {
-      for (let x = 0; x < w; x += 16) {
-        ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y);
+  }
+
+  // Overlay decorations — drawn into a separate offscreen canvas, then
+  // composited onto the body canvas using the clothing mask so they
+  // never touch skin/hair/face pixels.
+  if (recipe.overlay === 'stripes' || recipe.overlay === 'code' || recipe.overlay === 'desaturate') {
+    const off = document.createElement('canvas');
+    off.width = w; off.height = h;
+    const offctx = off.getContext('2d');
+
+    if (recipe.overlay === 'stripes') {
+      offctx.fillStyle = 'rgba(255,150,200,0.55)';
+      for (let y = 0; y < h; y += 24) {
+        if (Math.floor(y / 24) % 2 === 0) offctx.fillRect(0, y, w, 12);
       }
+    } else if (recipe.overlay === 'code') {
+      offctx.font = `${Math.max(10, Math.round(w / 60))}px monospace`;
+      offctx.fillStyle = 'rgba(0,255,128,0.85)';
+      const chars = '01;{}<>=>fnletconst';
+      for (let y = 18; y < h; y += 22) {
+        for (let x = 0; x < w; x += 16) {
+          offctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y);
+        }
+      }
+    } else if (recipe.overlay === 'desaturate') {
+      // For desaturate, fill with grayscale version of the canvas.
+      offctx.drawImage(canvas, 0, 0);
+      const od = offctx.getImageData(0, 0, w, h);
+      const dd = od.data;
+      for (let i = 0; i < dd.length; i += 4) {
+        const grey = (dd[i] + dd[i+1] + dd[i+2]) / 3;
+        dd[i]   = grey + (dd[i] - grey) * 0.55;
+        dd[i+1] = grey + (dd[i+1] - grey) * 0.55;
+        dd[i+2] = grey + (dd[i+2] - grey) * 0.55;
+      }
+      offctx.putImageData(od, 0, 0);
     }
-    ctx.restore();
-  } else if (recipe.overlay === 'desaturate') {
-    const d = ctx.getImageData(0, 0, w, h);
-    const dd = d.data;
-    for (let i = 0; i < dd.length; i += 4) {
-      const grey = (dd[i] + dd[i+1] + dd[i+2]) / 3;
-      dd[i]   = grey + (dd[i] - grey) * 0.55;
-      dd[i+1] = grey + (dd[i+1] - grey) * 0.55;
-      dd[i+2] = grey + (dd[i+2] - grey) * 0.55;
+
+    // Now blend the overlay onto the main canvas only where mask=1.
+    const baseImg = ctx.getImageData(0, 0, w, h);
+    const overImg = offctx.getImageData(0, 0, w, h);
+    const bd = baseImg.data, ovd = overImg.data;
+    for (let i = 0, p = 0; i < bd.length; i += 4, p++) {
+      if (!mask[p]) continue;
+      // Alpha-composite over (only on clothing pixels).
+      const oa = ovd[i+3] / 255;
+      if (oa <= 0) continue;
+      bd[i]   = Math.round(bd[i]   * (1 - oa) + ovd[i]   * oa);
+      bd[i+1] = Math.round(bd[i+1] * (1 - oa) + ovd[i+1] * oa);
+      bd[i+2] = Math.round(bd[i+2] * (1 - oa) + ovd[i+2] * oa);
     }
-    ctx.putImageData(d, 0, 0);
+    ctx.putImageData(baseImg, 0, 0);
   }
 
   const tex = new THREE.CanvasTexture(canvas);
@@ -1212,10 +1250,34 @@ function makeAccessory(kind) {
       break;
     }
     case 'sleepCap': {
-      const g = new THREE.ConeGeometry(0.13, 0.22, 16);
-      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xc983c6 }));
-      mesh.userData.offset = new THREE.Vector3(0.04, 0.20, 0);
-      mesh.rotation.z = -0.4;
+      // Drooping nightcap = a half-sphere base hugging the head + a soft
+      // cone drooping to the side + a fluffy pom-pom at the tip.
+      const group = new THREE.Group();
+      const fabric = new THREE.MeshStandardMaterial({ color: 0xd99cc8, roughness: 0.85 });
+      // Base — half sphere on top of the head.
+      const base = new THREE.Mesh(
+        new THREE.SphereGeometry(0.13, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2),
+        fabric,
+      );
+      base.position.set(0, 0, 0);
+      group.add(base);
+      // Drooping tail — a small cone tilted gently to the side.
+      const tail = new THREE.Mesh(
+        new THREE.ConeGeometry(0.07, 0.14, 14),
+        fabric,
+      );
+      tail.position.set(0.08, 0.06, -0.02);
+      tail.rotation.z = -1.0; // drooping sideways, not pointing up
+      group.add(tail);
+      // Pom-pom on the tip.
+      const pom = new THREE.Mesh(
+        new THREE.SphereGeometry(0.035, 12, 10),
+        new THREE.MeshStandardMaterial({ color: 0xfff0f5, roughness: 1.0 }),
+      );
+      pom.position.set(0.14, 0.04, -0.02);
+      group.add(pom);
+      mesh = group;
+      mesh.userData.offset = new THREE.Vector3(0, 0.13, 0);
       break;
     }
     case 'sunHat': {

@@ -155,6 +155,20 @@ const TOOLS = [
     handler: async ({ bones }) => kohaiPost('clear_pose', bones ? { bones } : {}),
   },
   {
+    name: 'kohai_play_animation',
+    description: 'Play a VRM animation clip by name. Animations are loaded from assets/vrm-animations/<name>.vrma. Common names: idle, wave, celebrate, thinking, walking, bow, sit, type. This is the preferred way to give Kohai life — drop in a .vrma file once and call by name.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Animation name (matches the filename minus .vrma).' },
+        loop: { type: 'boolean', description: 'Loop the animation indefinitely. Default false.' },
+        fadeMs: { type: 'number', description: 'Cross-fade duration in milliseconds. Default 350.' },
+      },
+      required: ['name'],
+    },
+    handler: async ({ name, loop, fadeMs }) => kohaiPost('play_animation', { name, loop: !!loop, fadeMs: fadeMs || 350 }),
+  },
+  {
     name: 'kohai_walk',
     description: 'Slide Kohai\'s window across the desktop. xPct/yPct = 0..1 fraction of the work area; ms = animation duration.',
     inputSchema: {

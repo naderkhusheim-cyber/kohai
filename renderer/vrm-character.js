@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm';
+import { VRMAnimationLoaderPlugin, createVRMAnimationClip } from '@pixiv/three-vrm-animation';
 
 const container = document.querySelector('.kohai-container');
 const canvas    = document.getElementById('canvas');
@@ -68,6 +69,45 @@ let neckBone = null, headBone = null, leftUpperArm = null, rightUpperArm = null,
 
 const loader = new GLTFLoader();
 loader.register((parser) => new VRMLoaderPlugin(parser));
+
+// Separate loader for .vrma animation files. They're glTF too, but with
+// the animation plugin instead of the avatar plugin.
+const animLoader = new GLTFLoader();
+animLoader.register((parser) => new VRMAnimationLoaderPlugin(parser));
+
+// Library of loaded animation clips, keyed by filename (sans extension).
+// Drop new .vrma files into assets/vrm-animations/ and they auto-load on
+// startup — no code changes needed.
+const animations = new Map();
+let currentAction = null;
+
+function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
+  const clip = animations.get(name);
+  if (!clip || !mixer) return false;
+  const action = mixer.clipAction(clip);
+  action.reset();
+  action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+  action.clampWhenFinished = !loop;
+  if (currentAction && currentAction !== action) {
+    currentAction.fadeOut(fadeMs / 1000);
+  }
+  action.fadeIn(fadeMs / 1000).play();
+  currentAction = action;
+  return true;
+}
+
+function loadAnimationFiles(vrm, names) {
+  return Promise.all(names.map((name) => new Promise((resolve) => {
+    const url = `../assets/vrm-animations/${name}.vrma`;
+    animLoader.load(url, (gltf) => {
+      const vrmAnims = gltf.userData.vrmAnimations;
+      if (!vrmAnims || !vrmAnims.length) return resolve(null);
+      const clip = createVRMAnimationClip(vrmAnims[0], vrm);
+      animations.set(name, clip);
+      resolve(name);
+    }, undefined, () => resolve(null)); // missing file = silently skip
+  })));
+}
 
 loader.load('../assets/vrm/character.vrm', (gltf) => {
   const model = gltf.userData.vrm;
@@ -143,6 +183,21 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
     rightLowerLeg  = h.getNormalizedBoneNode('rightLowerLeg');
   }
   applyIdlePose();
+  mixer = new THREE.AnimationMixer(vrm.scene);
+
+  // Try to load any .vrma animations the user has dropped in.
+  // Add more names here (or edit this list at runtime) to extend.
+  const animationLibrary = ['idle', 'wave', 'celebrate', 'thinking', 'walking', 'bow', 'sit', 'type'];
+  loadAnimationFiles(vrm, animationLibrary).then((loaded) => {
+    const ok = loaded.filter(Boolean);
+    if (ok.length) {
+      console.log('[kohai] loaded animations:', ok.join(', '));
+      // Auto-play idle if available so she's not standing in T-pose.
+      if (animations.has('idle')) playAnimation('idle', { loop: true });
+    } else {
+      console.log('[kohai] no .vrma files found — drop them in assets/vrm-animations/');
+    }
+  });
 
   if (loading) loading.classList.add('hide');
 }, undefined, (err) => {
@@ -284,9 +339,10 @@ const BEHAVIORS = {
     { ms: 2200, enter: () => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand', 'head']) },
   ],
   lookAround: [
-    { ms: 0,    enter: () => setPoseTarget('head', { ry:  0.55 }) },
-    { ms: 900,  enter: () => setPoseTarget('head', { ry: -0.55 }) },
-    { ms: 1800, enter: () => clearPoseTargets(['head']) },
+    { ms: 0,    enter: () => setPoseTarget('head', { ry:  0.45, lerp: 2.5 }) },
+    { ms: 2200, enter: () => setPoseTarget('head', { ry: -0.45, lerp: 2.5 }) },
+    { ms: 2200, enter: () => setPoseTarget('head', { ry:     0, lerp: 2.5 }) },
+    { ms: 1500, enter: () => clearPoseTargets(['head']) },
   ],
   stretch: [
     { ms: 0,   enter: () => {
@@ -305,8 +361,9 @@ const BEHAVIORS = {
     { ms: 1600, enter: () => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'head']) },
   ],
   bow: [
-    { ms: 0,   enter: () => { setPoseTarget('spine', { rx: -0.45 }); setPoseTarget('head', { rx: 0.4 }); } },
-    { ms: 700, enter: () => clearPoseTargets(['spine', 'head']) },
+    { ms: 0,    enter: () => { setPoseTarget('spine', { rx: -0.55, lerp: 3 }); setPoseTarget('head', { rx: 0.5, lerp: 3 }); } },
+    { ms: 1400, enter: () => { /* hold */ } },
+    { ms: 1100, enter: () => clearPoseTargets(['spine', 'head']) },
   ],
   peek: [
     // tilt forward and to the side, like she's leaning over to read
@@ -339,17 +396,24 @@ function playBehavior(name) {
 
 function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-// Idle ticker — every ~25–45 s of nothing happening, Kohai fidgets.
+// Idle ticker — every ~45–90 s of nothing happening, Kohai fidgets.
+// Spaced out so she doesn't feel twitchy.
 let lastActivityAt = performance.now();
 function noteActivity() { lastActivityAt = performance.now(); }
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
-  if (idleMs < 25000) return;
+  if (idleMs < 45000) return;
   if (scenarioActive || coding) return;
-  // Random fidget.
-  playBehavior(pickRandom(['lookAround', 'stretch', 'thinkingChin', 'lookAround']));
-  lastActivityAt = performance.now();
-}, 5000);
+  // Prefer a real .vrma idle clip when available; otherwise fall back to
+  // the canned procedural fidgets.
+  if (animations.has('idle')) {
+    playAnimation('idle', { loop: true });
+  } else {
+    playBehavior(pickRandom(['lookAround', 'stretch', 'thinkingChin']));
+  }
+  // Reset so the next fidget waits another full window.
+  lastActivityAt = performance.now() - Math.random() * 30000;
+}, 8000);
 
 function runScenario(steps) {
   clearScenario();
@@ -711,6 +775,10 @@ const CONTROL_HANDLERS = {
     for (const [name, rot] of Object.entries(bones)) setPoseTarget(name, rot);
   },
   clear_pose: ({ bones }) => clearPoseTargets(bones),
+  play_animation: ({ name, loop, fadeMs }) => {
+    if (typeof name !== 'string') return;
+    playAnimation(name, { loop: !!loop, fadeMs: fadeMs || 350 });
+  },
 };
 
 window.kohai.onEvent(({ type, data }) => {

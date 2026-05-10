@@ -125,6 +125,70 @@ html, body {
   bottom: 8%;
   width: 55%;
 }
+
+/* — Kohai's House — interior decor layer. Renders behind the canvas
+   (z-index 0) so the character draws on top. Each furniture piece is
+   hidden by default and shown when the container's data-room attribute
+   names it. */
+.house {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.floor {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 14%;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #8a5a36 0 28px,
+      #6a4426 28px 30px,
+      #8a5a36 30px 58px,
+      #5a3820 58px 60px
+    );
+  border-top: 2px solid rgba(0,0,0,0.35);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.furniture {
+  position: absolute;
+  opacity: 0;
+  filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35));
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.couch  { left: 4%;  bottom: 12%; width: 50%;  transform: translateY(20px); }
+.lamp   { right: 4%; bottom: 12%; width: 18%;  transform: translateY(20px); }
+.bed    { left: 50%; bottom: 12%; width: 60%; transform: translateX(-50%) translateY(20px); }
+.plant  { right: 24%; bottom: 12%; width: 14%; transform: translateY(20px); }
+
+/* Reveal floor whenever the room is "active" — i.e. she's in any
+   home-mode state (sit / sleep / coding). */
+.kohai-container[data-room] .floor          { opacity: 1; }
+
+/* Per-room visibility. */
+.kohai-container[data-room="livingroom"] .couch,
+.kohai-container[data-room="livingroom"] .lamp,
+.kohai-container[data-room="livingroom"] .plant {
+  opacity: 1;
+  transform: translateY(0);
+}
+.kohai-container[data-room="livingroom"] .bed,
+.kohai-container[data-room="livingroom"] .plant {
+  transform: translateX(-50%) translateY(0);
+}
+.kohai-container[data-room="bedroom"] .bed {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.kohai-container[data-room="bedroom"] .lamp {
+  opacity: 1;
+  transform: translateY(0);
+}
 .laptop svg { width: 100%; height: auto; display: block; }
 
 .kohai-container[data-coding="1"] .laptop {

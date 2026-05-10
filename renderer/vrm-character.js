@@ -101,26 +101,20 @@ function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
 // that calls setPoseTarget / clearPoseTargets on its own schedule.
 const PROCEDURAL_ANIMS = {
   sit: () => {
-    // Sit-on-an-invisible-chair pose. Hip bends forward 90° (upperLeg.rx
-    // = +π/2). Knee bends so lower leg drops down — for VRM standard
-    // bones the knee flexes with NEGATIVE rx on the lower leg
-    // (because the bone's +Y still points down the leg length and we
-    // need to rotate it back toward the ground from horizontal).
-    // Plus a small outward splay on the upper legs so it doesn't look
-    // unnaturally narrow.
+    // Living room appears: floor + couch + lamp + plant fade in. Kohai
+    // sits ON the couch (her hips lower into the couch silhouette).
+    container.dataset.room = 'livingroom';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.10, lerp: 4 });
     setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.10, lerp: 4 });
     setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
     setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
-    // Slight backward lean so she doesn't fold forward.
     setPoseTarget('spine',         { rx: 0.05, lerp: 4 });
-    // Hands relax forward into her lap.
     setPoseTarget('leftUpperArm',  { rx: -0.4, lerp: 4 });
     setPoseTarget('rightUpperArm', { rx: -0.4, lerp: 4 });
     setPoseTarget('leftLowerArm',  { ry: -0.6, lerp: 4 });
     setPoseTarget('rightLowerArm', { ry:  0.6, lerp: 4 });
     if (hips) hips.position.y = -0.45;
-    say('Hai, sitting down senpai~', 2500);
+    say('Hai, sitting on the couch senpai~', 2500);
   },
   stand: () => {
     clearPoseTargets([
@@ -128,7 +122,30 @@ const PROCEDURAL_ANIMS = {
       'spine', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm',
     ]);
     if (hips) hips.position.y = 0;
+    delete container.dataset.room;
     say('Standing up!', 2000);
+  },
+  sleep: () => {
+    // Bedroom appears: bed fades in, lamp dimmed-warm. Kohai lies on
+    // the bed (legs straight, body tilted, hips lowered onto the bed
+    // silhouette).
+    container.dataset.room = 'bedroom';
+    setPoseTarget('leftUpperLeg',  { rx: 0.05, lerp: 3 });
+    setPoseTarget('rightUpperLeg', { rx: 0.05, lerp: 3 });
+    setPoseTarget('leftLowerLeg',  { rx: 0, lerp: 3 });
+    setPoseTarget('rightLowerLeg', { rx: 0, lerp: 3 });
+    setPoseTarget('spine', { rx: 0.05, rz: 0.05, lerp: 3 });
+    setPoseTarget('head',  { rx: 0.15, rz: 0.10, lerp: 3 });
+    setPoseTarget('leftUpperArm',  { rx: -0.3, rz: -0.15, lerp: 3 });
+    setPoseTarget('rightUpperArm', { rx: -0.3, rz:  0.15, lerp: 3 });
+    if (hips) hips.position.y = -0.6;
+    setMoodExpression('sleepy');
+    say('Oyasumi, senpai…', 3000);
+  },
+  home: () => {
+    // Show the living room without changing pose — she's just "at home."
+    container.dataset.room = 'livingroom';
+    say('Welcome to my house, senpai!', 2500);
   },
   wave: () => {
     setPoseTarget('rightUpperArm', { rx: -1.6, rz: 0.6, lerp: 8 });

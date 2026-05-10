@@ -133,8 +133,54 @@ function spawnKeystroke() {
   setTimeout(() => k.remove(), 1500);
 }
 
-function enterCoding(durationMs = 4000) {
+// Drives Live2D arm parameters each frame to make Kohai look like she's
+// typing. Layered on top of whatever idle motion is playing — so the rest
+// of the body keeps breathing while her arms tap.
+const TYPING_PARAMS = [
+  // Arms swing on the B (up/down) axis — primary "typing tap" motion.
+  { id: 'ParamArmLB', amp: 8,   freq: 6.0,  phase: 0.0,        center: 2 },
+  { id: 'ParamArmRB', amp: 8,   freq: 6.0,  phase: Math.PI,    center: 2 },
+  // Subtle A-axis offset to spread the arms forward over the keyboard.
+  { id: 'ParamArmLA', amp: 2,   freq: 6.0,  phase: 0.0,        center: -4 },
+  { id: 'ParamArmRA', amp: 2,   freq: 6.0,  phase: Math.PI,    center: -4 },
+  // Hands open/close like fingers tapping keys.
+  { id: 'ParamHandL', amp: 0.4, freq: 12.0, phase: 0.0,        center: 0.5 },
+  { id: 'ParamHandR', amp: 0.4, freq: 12.0, phase: Math.PI,    center: 0.5 },
+  // Concentration pose: slight forward body lean, head tilted down to look
+  // at the laptop.
+  { id: 'ParamBodyAngleX', amp: 0, freq: 0,  phase: 0, center: -2 },
+  { id: 'ParamAngleY',     amp: 0, freq: 0,  phase: 0, center: -10 },
+];
+
+let typingTickerFn = null;
+let typingStart = 0;
+
+function startTypingAnim() {
+  if (!app || !model || typingTickerFn) return;
+  typingStart = performance.now();
+  typingTickerFn = () => {
+    if (!model?.internalModel?.coreModel) return;
+    const t = (performance.now() - typingStart) / 1000;
+    const core = model.internalModel.coreModel;
+    for (const p of TYPING_PARAMS) {
+      const value = p.center + (p.amp ? Math.sin(t * p.freq + p.phase) * p.amp : 0);
+      try { core.setParameterValueById(p.id, value); } catch (_) {}
+    }
+  };
+  // Run AFTER the default-priority Live2D motion update so our values win.
+  const priority = (window.PIXI && PIXI.UPDATE_PRIORITY && PIXI.UPDATE_PRIORITY.LOW) || -25;
+  app.ticker.add(typingTickerFn, undefined, priority);
+}
+
+function stopTypingAnim() {
+  if (!typingTickerFn || !app) return;
+  app.ticker.remove(typingTickerFn);
+  typingTickerFn = null;
+}
+
+function enterCoding(durationMs = 20000) {
   container.dataset.coding = '1';
+  startTypingAnim();
   if (!keystrokeInterval) {
     keystrokeInterval = setInterval(spawnKeystroke, 220);
   }
@@ -144,6 +190,7 @@ function enterCoding(durationMs = 4000) {
 
 function exitCoding() {
   delete container.dataset.coding;
+  stopTypingAnim();
   if (keystrokeInterval) {
     clearInterval(keystrokeInterval);
     keystrokeInterval = null;

@@ -88,25 +88,18 @@ function clampToDisplay(x, y, w, h) {
 }
 
 let restingPosition = null; // remembers where to drift back to
-let driftAnim = null;
 
-function tweenPosition(targetX, targetY, durationMs = 600) {
+// macOS animates setBounds natively — much smoother than per-frame setPosition
+// on transparent always-on-top windows.
+function smoothMoveTo(targetX, targetY) {
   if (!win || win.isDestroyed()) return;
-  if (driftAnim) { clearInterval(driftAnim); driftAnim = null; }
-  const [startX, startY] = win.getPosition();
   const [w, h] = win.getSize();
-  const { x: tx, y: ty } = clampToDisplay(targetX, targetY, w, h);
-  const start = Date.now();
-  driftAnim = setInterval(() => {
-    if (!win || win.isDestroyed()) { clearInterval(driftAnim); driftAnim = null; return; }
-    const t = Math.min(1, (Date.now() - start) / durationMs);
-    // Ease-out cubic — fast start, gentle settle.
-    const e = 1 - Math.pow(1 - t, 3);
-    const cx = Math.round(startX + (tx - startX) * e);
-    const cy = Math.round(startY + (ty - startY) * e);
-    try { win.setPosition(cx, cy); } catch (_) {}
-    if (t >= 1) { clearInterval(driftAnim); driftAnim = null; }
-  }, 16);
+  const { x, y } = clampToDisplay(targetX, targetY, w, h);
+  try {
+    win.setBounds({ x, y, width: w, height: h }, true);
+  } catch (_) {
+    win.setPosition(x, y);
+  }
 }
 
 function moveToWorkPosition() {
@@ -118,12 +111,12 @@ function moveToWorkPosition() {
   // Slide toward bottom-center — like she walked over to peek at the work.
   const targetX = dx + Math.round((dw - w) / 2);
   const targetY = dy + dh - h - 24;
-  tweenPosition(targetX, targetY, 700);
+  smoothMoveTo(targetX, targetY);
 }
 
 function moveToRest() {
   if (!restingPosition) return;
-  tweenPosition(restingPosition.x, restingPosition.y, 800);
+  smoothMoveTo(restingPosition.x, restingPosition.y);
   restingPosition = null;
 }
 

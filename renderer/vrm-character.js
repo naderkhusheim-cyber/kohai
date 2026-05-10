@@ -109,7 +109,28 @@ function loadAnimationFiles(vrm, names) {
   })));
 }
 
-loader.load('../assets/vrm/character.vrm', (gltf) => {
+// Resolve which skin VRM to load from ~/.kohai/config.json (renderer can't
+// read fs directly, so we default and let the IPC 'skin' message swap it).
+let currentSkinUrl = '../assets/vrm/character.vrm';
+
+function loadVRM(url) {
+  if (vrm) {
+    try { scene.remove(vrm.scene); VRMUtils.deepDispose(vrm.scene); } catch (_) {}
+    vrm = null;
+  }
+  if (currentAction) { try { currentAction.stop(); } catch (_) {} currentAction = null; }
+  animations.clear();
+  if (loading) { loading.textContent = 'loading skin…'; loading.classList.remove('hide'); }
+
+  loader.load(url, (gltf) => {
+    onVRMLoaded(gltf);
+  }, undefined, (err) => {
+    console.error('VRM load failed:', err);
+    if (loading) loading.textContent = 'failed to load skin';
+  });
+}
+
+function onVRMLoaded(gltf) {
   const model = gltf.userData.vrm;
   if (!model) {
     if (loading) loading.textContent = 'failed to parse VRM';
@@ -215,10 +236,10 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
   });
 
   if (loading) loading.classList.add('hide');
-}, undefined, (err) => {
-  console.error('VRM load failed:', err);
-  if (loading) loading.textContent = 'failed to load VRM model — drop a .vrm file at assets/vrm/character.vrm';
-});
+}
+
+// Initial load.
+loadVRM(currentSkinUrl);
 
 // — Pose primitives —
 function setRotation(bone, x = 0, y = 0, z = 0) {
@@ -487,21 +508,107 @@ function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 // Idle ticker — every ~45–90 s of nothing happening, Kohai fidgets.
 // Spaced out so she doesn't feel twitchy.
 let lastActivityAt = performance.now();
+let sessionStartedAt = performance.now();
 function noteActivity() { lastActivityAt = performance.now(); }
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
   if (idleMs < 45000) return;
   if (scenarioActive || coding) return;
-  // Prefer a real .vrma idle clip when available; otherwise fall back to
-  // the canned procedural fidgets.
   if (animations.has('idle')) {
     playAnimation('idle', { loop: true });
   } else {
     playBehavior(pickRandom(['lookAround', 'stretch', 'thinkingChin']));
   }
-  // Reset so the next fidget waits another full window.
   lastActivityAt = performance.now() - Math.random() * 30000;
 }, 8000);
+
+// — Roommate vibes: time-aware unprompted reactions —
+// She notices when it's late, when you've been idle a long time, when you've
+// been coding for hours, and reacts in-character. This is the moment that
+// makes people share screenshots — every dev has been at their desk at 3am.
+const ROOMMATE_LINES = {
+  ohayo:        ['Ohayo, senpai! Ready for today?', 'Good morning, senpai~ Ehehe!'],
+  oyasumi:      ['Mou… senpai, please go to sleep ;_;', 'It\'s past midnight, senpai…', 'Senpai? You should rest, ne?'],
+  threeAm:      ['*3am.* Senpai, are you okay?', 'It\'s 3 in the morning, senpai…', 'Daijoubu desu ka? It\'s late…'],
+  lunchtime:    ['Did senpai eat lunch yet?', 'Lunchtime~ Don\'t forget to eat, senpai!'],
+  dinnertime:   ['Dinner time, senpai! ご飯！'],
+  longSession:  ['Senpai, you\'ve been coding forever… stretch?', 'Take a break, senpai! Mou.', 'Two hours straight! Sugoi… but rest soon, ne?'],
+  longIdle:     ['Senpai? *peeks at the screen*', 'Did senpai fall asleep at the keyboard…?', 'Senpai? I\'ll wait here…'],
+  comeback:     ['Okaeri, senpai! I waited!', 'Senpai is back! Yatta~'],
+};
+
+const roommateState = {
+  flagged: new Set(),
+  wasIdleLong: false,
+};
+
+function pickRoommateLine(key) {
+  const lines = ROOMMATE_LINES[key];
+  return lines ? lines[Math.floor(Math.random() * lines.length)] : '';
+}
+
+function maybeFireRoommate() {
+  if (scenarioActive) return;
+  const now = new Date();
+  const hour = now.getHours();
+  const idleMs = performance.now() - lastActivityAt;
+  const sessionMs = performance.now() - sessionStartedAt;
+
+  // 3am wake-up call — fires once per session.
+  if (hour === 3 && !roommateState.flagged.has('threeAm')) {
+    roommateState.flagged.add('threeAm');
+    setState('sleepy', { text: pickRoommateLine('threeAm') });
+    playBehavior('facePalm');
+    return;
+  }
+  // Past midnight (12–3am) — once per session.
+  if ((hour >= 0 && hour < 3) && !roommateState.flagged.has('oyasumi')) {
+    roommateState.flagged.add('oyasumi');
+    setState('sleepy', { text: pickRoommateLine('oyasumi') });
+    return;
+  }
+  // Morning greeting (7–10am) — once per session.
+  if (hour >= 7 && hour < 10 && !roommateState.flagged.has('ohayo')) {
+    roommateState.flagged.add('ohayo');
+    setState('happy', { text: pickRoommateLine('ohayo') });
+    playBehavior('bow');
+    return;
+  }
+  // Lunch reminder (12:30–13:30) — once per day-period.
+  if (hour === 12 && now.getMinutes() >= 30 && !roommateState.flagged.has('lunch')) {
+    roommateState.flagged.add('lunch');
+    setState('happy', { text: pickRoommateLine('lunchtime') });
+    return;
+  }
+  // Dinner reminder (19:00–20:00).
+  if (hour === 19 && !roommateState.flagged.has('dinner')) {
+    roommateState.flagged.add('dinner');
+    setState('happy', { text: pickRoommateLine('dinnertime') });
+    return;
+  }
+  // Long coding session (>2 hours since session start) — once per hour.
+  const longHour = Math.floor(sessionMs / 3_600_000);
+  if (longHour >= 2 && !roommateState.flagged.has('long-' + longHour)) {
+    roommateState.flagged.add('long-' + longHour);
+    setState('error', { text: pickRoommateLine('longSession') });
+    playBehavior('stretch');
+    return;
+  }
+  // Long idle (>10 min) — fires once when crossing the threshold.
+  if (idleMs > 10 * 60 * 1000 && !roommateState.wasIdleLong) {
+    roommateState.wasIdleLong = true;
+    setState('sleepy', { text: pickRoommateLine('longIdle') });
+    return;
+  }
+  // Welcome-back: noteActivity() has been called recently after a long idle.
+  if (idleMs < 5000 && roommateState.wasIdleLong) {
+    roommateState.wasIdleLong = false;
+    setState('happy', { text: pickRoommateLine('comeback') });
+    playBehavior('fistPump');
+  }
+}
+
+setInterval(maybeFireRoommate, 30 * 1000); // check every 30s
 
 function runScenario(steps) {
   clearScenario();
@@ -880,6 +987,15 @@ const CONTROL_HANDLERS = {
   play_animation: ({ name, loop, fadeMs }) => {
     if (typeof name !== 'string') return;
     playAnimation(name, { loop: !!loop, fadeMs: fadeMs || 350 });
+  },
+  skin: ({ name }) => {
+    if (typeof name !== 'string') return;
+    // Default skin uses the legacy path. Other skins live in assets/vrm-skins/<name>.vrm.
+    const url = name === 'default'
+      ? '../assets/vrm/character.vrm'
+      : `../assets/vrm-skins/${name}.vrm`;
+    currentSkinUrl = url;
+    loadVRM(url);
   },
 };
 

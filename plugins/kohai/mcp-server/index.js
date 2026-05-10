@@ -236,6 +236,16 @@ Each step can include any of: pose (bones map), clear_pose (array of names), say
     handler: async ({ bones }) => kohaiPost('clear_pose', bones ? { bones } : {}),
   },
   {
+    name: 'kohai_skin',
+    description: 'Switch Kohai to a different outfit/skin. The "default" skin is always available; other skins require a matching .vrm file at assets/vrm-skins/<name>.vrm. Common names: default, school, casual, formal, sleep.',
+    inputSchema: {
+      type: 'object',
+      properties: { name: { type: 'string', description: 'Skin name.' } },
+      required: ['name'],
+    },
+    handler: async ({ name }) => kohaiPost('skin', { name }),
+  },
+  {
     name: 'kohai_play_animation',
     description: 'Play a VRM animation clip by name. Animations are loaded from assets/vrm-animations/<name>.vrma. Common names: idle, wave, celebrate, thinking, walking, bow, sit, type. This is the preferred way to give Kohai life — drop in a .vrma file once and call by name.',
     inputSchema: {

@@ -12,10 +12,9 @@
       "author": { "name": "Nader Khusheim" },
       "category": "fun",
       "source": {
-        "source": "git-subdir",
+        "source": "url",
         "url": "https://github.com/naderkhusheim-cyber/kohai.git",
-        "path": ".",
-        "ref": "main"
+        "sha": "9ed1b6ef6b589b1d5741d573574f637237201bc0"
       },
       "homepage": "https://github.com/naderkhusheim-cyber/kohai"
     }

@@ -11,7 +11,12 @@
       "description": "Anime kohai companion for Claude Code — reacts to your tools, speaks via VOICEVOX, lives next to your terminal.",
       "author": { "name": "Nader Khusheim" },
       "category": "fun",
-      "source": ".",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/naderkhusheim-cyber/kohai.git",
+        "path": ".",
+        "ref": "main"
+      },
       "homepage": "https://github.com/naderkhusheim-cyber/kohai"
     }
   ]

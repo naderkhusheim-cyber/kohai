@@ -162,6 +162,11 @@ function createWindow() {
     },
   });
 
+  // Surface renderer console to main-process stdout for debugging.
+  win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+    console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
+  });
+
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // Pick renderer based on ~/.kohai/config.json: { "renderer": "vrm" | "live2d" }
   const cfg = (() => {

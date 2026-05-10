@@ -624,9 +624,6 @@ function fireRoommate(key) {
   return true;
 }
 
-// Expose for the test endpoint.
-CONTROL_HANDLERS.roommate = ({ key }) => fireRoommate(key);
-
 function runScenario(steps) {
   clearScenario();
   scenarioQueue = steps.slice();
@@ -1010,6 +1007,7 @@ const CONTROL_HANDLERS = {
     if (typeof name !== 'string') return;
     applySkin(name);
   },
+  roommate: ({ key }) => { fireRoommate(key); },
 };
 
 // — Programmatic skins: apply material tints + add 3D accessory primitives

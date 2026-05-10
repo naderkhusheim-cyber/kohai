@@ -82,6 +82,33 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
   vrm.scene.rotation.y = Math.PI; // face the camera
   scene.add(vrm.scene);
 
+  // Auto-normalize model height to 1.6 m so any VRM (regardless of how it
+  // was scaled at export time) frames consistently.
+  vrm.scene.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(vrm.scene);
+  const size = new THREE.Vector3();
+  bounds.getSize(size);
+  if (size.y > 0) {
+    const targetH = 1.6;
+    const s = targetH / size.y;
+    vrm.scene.scale.setScalar(s);
+    vrm.scene.updateMatrixWorld(true);
+    // Re-anchor feet to y=0 after scaling.
+    const b2 = new THREE.Box3().setFromObject(vrm.scene);
+    vrm.scene.position.y -= b2.min.y;
+    vrm.scene.updateMatrixWorld(true);
+  }
+  // Frame upper body: lookAt chest, distance based on desired half-height.
+  const finalBox = new THREE.Box3().setFromObject(vrm.scene);
+  const charHeight = finalBox.max.y - finalBox.min.y;
+  const chestY = finalBox.min.y + charHeight * 0.78;
+  const halfFit = charHeight * 0.32; // upper body covers ~64% of height
+  const fovRad = (camera.fov * Math.PI) / 180;
+  const dist = halfFit / Math.tan(fovRad / 2);
+  camera.position.set(0, chestY, dist + 0.3);
+  camera.lookAt(0, chestY - 0.05, 0);
+  camera.updateProjectionMatrix();
+
   // Sanity check: if the VRM has no humanoid (e.g. a developer constraint
   // demo) the bones are missing and there's nothing to animate. Show a
   // hint so the user knows to swap in a real character VRM.

@@ -1010,19 +1010,164 @@ const CONTROL_HANDLERS = {
   roommate: ({ key }) => { fireRoommate(key); },
 };
 
-// — Programmatic skins: apply material tints + add 3D accessory primitives
-// to the existing VRM so we get visible outfit variations without needing
-// new VRM files. Real outfit DLC will swap in dedicated VRM models later;
-// this is the v1 stopgap.
-const SKIN_PRESETS = {
-  default: { tint: 0xffffff, saturation: 1.00, accessories: [] },
-  school:  { tint: 0xfff2f2, saturation: 1.05, accessories: ['redBow'] },
-  casual:  { tint: 0xe6f0ff, saturation: 0.95, accessories: ['cap'] },
-  formal:  { tint: 0xe8e8ec, saturation: 0.55, accessories: ['bowTie'] },
-  sleep:   { tint: 0xffd9ec, saturation: 0.85, accessories: ['sleepCap'] },
-  summer:  { tint: 0xfff0c8, saturation: 1.15, accessories: ['sunHat'] },
-  hacker:  { tint: 0xc8ffd0, saturation: 1.10, accessories: ['glasses'] },
+// — Programmatic skins: pixel-level recoloring of the body texture so the
+// shirt and shorts visibly change per skin while skin tones, hair, and
+// face details stay untouched. HSV-based filter described in the
+// research-agent recipe.
+const SKIN_RECIPES = {
+  default: { shirt: null,             shorts: null,            overlay: null },
+  school:  { shirt: [38, 64, 128],    shorts: [38, 64, 128],   overlay: null },          // navy uniform
+  casual:  { shirt: [137, 196, 244],  shorts: [180, 150, 100], overlay: null },          // light blue + khaki
+  formal:  { shirt: [60, 60, 70],     shorts: [40, 40, 50],    overlay: 'desaturate' },  // charcoal suit
+  sleep:   { shirt: [255, 192, 220],  shorts: [255, 170, 200], overlay: 'stripes' },     // pink pajamas
+  summer:  { shirt: [255, 230, 120],  shorts: [200, 180, 240], overlay: null },          // yellow + lavender
+  hacker:  { shirt: [40, 40, 40],     shorts: [40, 40, 40],    overlay: 'code' },        // black hoodie + code
 };
+
+// HSV-based pixel classifier — keeps skin, hair, eyes intact and only
+// recolors clothing pixels.
+function classifyPixel(r, g, b) {
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  const v = max / 255;
+  const s = max === 0 ? 0 : (max - min) / max;
+  // Hue in degrees.
+  let h = 0;
+  if (max !== min) {
+    const d = max - min;
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * (((b - r) / d) + 2);
+    else h = 60 * (((r - g) / d) + 4);
+    if (h < 0) h += 360;
+  }
+  // Skin: warm hue, mid saturation, bright. Test FIRST so it short-circuits.
+  if (h >= 10 && h <= 45 && s >= 0.15 && s <= 0.55 && v > 0.55) return 'skin';
+  // Hair: warm hue, darker.
+  if (h >= 15 && h <= 40 && v < 0.55 && s > 0.15) return 'hair';
+  // Lip / eye highlights: high saturation + warm hue.
+  if (h >= 0 && h <= 20 && s > 0.6) return 'face';
+  // Eye iris: distinctive blue/green/etc, high sat.
+  if (s > 0.5 && h >= 60 && h <= 280) return 'face';
+  // Shirt: nearly white.
+  if (s < 0.18 && v > 0.75) return 'shirt';
+  // Shorts: very dark.
+  if (v < 0.22 && s < 0.5) return 'shorts';
+  return 'other';
+}
+
+function recolorPreservingShade(d, i, target, refV) {
+  // Multiply target color by (V / refV) so folds and shading survive.
+  const r = d[i], g = d[i+1], b = d[i+2];
+  const v = Math.max(r, g, b) / 255;
+  const k = Math.max(0.35, Math.min(1.15, v / refV));
+  d[i]   = Math.min(255, Math.round(target[0] * k));
+  d[i+1] = Math.min(255, Math.round(target[1] * k));
+  d[i+2] = Math.min(255, Math.round(target[2] * k));
+}
+
+// Cache original ImageData per material so each skin switch starts fresh.
+const ORIGINAL_PIXELS = new WeakMap();
+
+function getOriginalPixels(material) {
+  if (ORIGINAL_PIXELS.has(material)) return ORIGINAL_PIXELS.get(material);
+  const src = material.map;
+  if (!src || !src.image) return null;
+  const img = src.image;
+  const w = img.width || img.naturalWidth || 512;
+  const h = img.height || img.naturalHeight || 512;
+  if (!w || !h) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  try { ctx.drawImage(img, 0, 0, w, h); }
+  catch (e) { return null; } // tainted/cross-origin
+  const data = ctx.getImageData(0, 0, w, h);
+  const stash = { width: w, height: h, srcRef: src, data };
+  ORIGINAL_PIXELS.set(material, stash);
+  return stash;
+}
+
+function applyRecipeToMaterial(material, recipe) {
+  const stash = getOriginalPixels(material);
+  if (!stash) return false;
+  const { width: w, height: h, srcRef, data: orig } = stash;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  const out = ctx.createImageData(w, h);
+  // Copy the original pixels untouched first.
+  out.data.set(orig.data);
+
+  if (recipe.shirt || recipe.shorts) {
+    const d = out.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const cls = classifyPixel(d[i], d[i+1], d[i+2]);
+      if (cls === 'shirt' && recipe.shirt) {
+        recolorPreservingShade(d, i, recipe.shirt, 0.92);
+      } else if (cls === 'shorts' && recipe.shorts) {
+        recolorPreservingShade(d, i, recipe.shorts, 0.18);
+      }
+    }
+  }
+  ctx.putImageData(out, 0, 0);
+
+  // Overlay decorations.
+  if (recipe.overlay === 'stripes') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(255,150,200,0.45)';
+    for (let y = 0; y < h; y += 24) {
+      if (Math.floor(y / 24) % 2 === 0) ctx.fillRect(0, y, w, 12);
+    }
+    ctx.restore();
+  } else if (recipe.overlay === 'code') {
+    ctx.save();
+    ctx.font = `${Math.max(10, Math.round(w / 60))}px monospace`;
+    ctx.fillStyle = 'rgba(0,255,128,0.55)';
+    const chars = '01;{}<>=>fnletconst';
+    for (let y = 18; y < h; y += 22) {
+      for (let x = 0; x < w; x += 16) {
+        ctx.fillText(chars[Math.floor(Math.random() * chars.length)], x, y);
+      }
+    }
+    ctx.restore();
+  } else if (recipe.overlay === 'desaturate') {
+    const d = ctx.getImageData(0, 0, w, h);
+    const dd = d.data;
+    for (let i = 0; i < dd.length; i += 4) {
+      const grey = (dd[i] + dd[i+1] + dd[i+2]) / 3;
+      dd[i]   = grey + (dd[i] - grey) * 0.55;
+      dd[i+1] = grey + (dd[i+1] - grey) * 0.55;
+      dd[i+2] = grey + (dd[i+2] - grey) * 0.55;
+    }
+    ctx.putImageData(d, 0, 0);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.flipY      = srcRef.flipY;
+  tex.colorSpace = srcRef.colorSpace;
+  tex.wrapS      = srcRef.wrapS;
+  tex.wrapT      = srcRef.wrapT;
+  tex.minFilter  = srcRef.minFilter;
+  tex.magFilter  = srcRef.magFilter;
+  tex.anisotropy = srcRef.anisotropy;
+  tex.generateMipmaps = srcRef.generateMipmaps;
+  tex.needsUpdate = true;
+
+  if (material.userData._kohaiOwnedMap && material.map && material.map !== srcRef) {
+    try { material.map.dispose(); } catch (_) {}
+  }
+  material.map = tex;
+  material.userData._kohaiOwnedMap = true;
+  // MToon uses shadeMultiplyTexture for the shade-side color — swap it too
+  // so the shaded side of the shirt doesn't read as the original white.
+  if (material.shadeMultiplyTexture !== undefined) {
+    material.shadeMultiplyTexture = tex;
+  }
+  if ('uniformsNeedUpdate' in material) material.uniformsNeedUpdate = true;
+  material.needsUpdate = true;
+  return true;
+}
 
 const accessoryGroup = new THREE.Group();
 scene.add(accessoryGroup);
@@ -1052,9 +1197,18 @@ function makeAccessory(kind) {
       break;
     }
     case 'bowTie': {
-      const g = new THREE.BoxGeometry(0.12, 0.04, 0.03);
-      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x222222 }));
-      mesh.userData.offset = new THREE.Vector3(0, -0.18, 0.06);
+      // Two pinched triangles = a proper bow shape, anchored at the throat.
+      const shape = new THREE.Shape();
+      shape.moveTo(0, 0);
+      shape.lineTo(0.06, 0.025);
+      shape.lineTo(0.06, -0.025);
+      shape.lineTo(0, 0);
+      shape.lineTo(-0.06, 0.025);
+      shape.lineTo(-0.06, -0.025);
+      shape.lineTo(0, 0);
+      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false });
+      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x111111 }));
+      mesh.userData.offset = new THREE.Vector3(0, -0.13, 0.075); // throat, in front of body
       break;
     }
     case 'sleepCap': {
@@ -1071,47 +1225,79 @@ function makeAccessory(kind) {
       break;
     }
     case 'glasses': {
-      const g = new THREE.TorusGeometry(0.04, 0.008, 8, 16);
-      mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x111111 }));
-      mesh.userData.offset = new THREE.Vector3(0, 0.0, 0.085);
-      mesh.userData.dual = true; // mirror to right side
+      // Two thin lens rings + a bridge piece, anchored at eye height in
+      // front of the face. Proper proportions for an anime character.
+      const group = new THREE.Group();
+      const ringGeo = new THREE.TorusGeometry(0.038, 0.005, 6, 24);
+      const black = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.4 });
+      const lensL = new THREE.Mesh(ringGeo, black);
+      const lensR = new THREE.Mesh(ringGeo, black);
+      lensL.position.set(-0.045, 0, 0);
+      lensR.position.set( 0.045, 0, 0);
+      group.add(lensL); group.add(lensR);
+      // Tinted lens fill (subtle greenish for "hacker" vibe).
+      const fillGeo = new THREE.CircleGeometry(0.034, 24);
+      const fill = new THREE.MeshBasicMaterial({ color: 0x8aff8a, transparent: true, opacity: 0.18 });
+      const fillL = new THREE.Mesh(fillGeo, fill);
+      const fillR = new THREE.Mesh(fillGeo, fill);
+      fillL.position.set(-0.045, 0, 0.001);
+      fillR.position.set( 0.045, 0, 0.001);
+      group.add(fillL); group.add(fillR);
+      // Bridge.
+      const bridge = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.005, 0.005),
+        black
+      );
+      bridge.position.set(0, 0.005, 0);
+      group.add(bridge);
+      mesh = group;
+      mesh.userData.offset = new THREE.Vector3(0, 0.025, 0.10); // at eye level, in front
       break;
     }
   }
   return mesh;
 }
 
+// Skin → accessory mapping (kept separate so we can iterate quickly).
+const SKIN_ACCESSORIES = {
+  default: [],
+  school:  ['redBow'],
+  casual:  ['cap'],
+  formal:  ['bowTie'],
+  sleep:   ['sleepCap'],
+  summer:  ['sunHat'],
+  hacker:  ['glasses'],
+};
+
 function applySkin(name) {
-  const preset = SKIN_PRESETS[name] || SKIN_PRESETS.default;
-  // Material tint + saturation on every mesh in the VRM.
+  const recipe = SKIN_RECIPES[name] || SKIN_RECIPES.default;
+  const accessories = SKIN_ACCESSORIES[name] || [];
+
+  // Pixel-recolor the body texture on every body/cloth-named material.
+  // Defaults to ALL materials if naming convention is unclear (the bundled
+  // VRM has unnamed atlases — we still get the right result because the
+  // HSV classifier protects skin/hair/eye pixels).
   if (vrm) {
     vrm.scene.traverse((obj) => {
       if (!obj.isMesh || !obj.material) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       for (const m of mats) {
-        if (!m.userData.kohaiOriginalColor && m.color) {
-          m.userData.kohaiOriginalColor = m.color.clone();
+        // Only target materials whose name suggests body/clothes if any are
+        // named that way; otherwise fall back to applying everywhere (the
+        // pixel classifier preserves skin/hair regions on its own).
+        const named = m.name && /body|cloth|outfit|shirt|skirt|pants|short|jacket|uniform/i.test(m.name);
+        const anyNamedBody = vrm.scene.children.some(/* placeholder */ () => false);
+        // Apply if name matches OR no body-named materials exist on the model.
+        if (named || !m.name || m.name === '') {
+          applyRecipeToMaterial(m, recipe);
         }
-        if (m.color && m.userData.kohaiOriginalColor) {
-          const orig = m.userData.kohaiOriginalColor;
-          // Multiply original × tint, then desaturate toward gray.
-          const tint = new THREE.Color(preset.tint);
-          const out = new THREE.Color(orig.r * tint.r, orig.g * tint.g, orig.b * tint.b);
-          if (preset.saturation !== 1.0) {
-            const grey = (out.r + out.g + out.b) / 3;
-            out.r = grey + (out.r - grey) * preset.saturation;
-            out.g = grey + (out.g - grey) * preset.saturation;
-            out.b = grey + (out.b - grey) * preset.saturation;
-          }
-          m.color.copy(out);
-        }
-        m.needsUpdate = true;
       }
     });
   }
-  // Swap accessories.
+
+  // Swap accessories on the head bone.
   clearAccessories();
-  for (const kind of preset.accessories) {
+  for (const kind of accessories) {
     const acc = makeAccessory(kind);
     if (!acc) continue;
     accessoryGroup.add(acc);

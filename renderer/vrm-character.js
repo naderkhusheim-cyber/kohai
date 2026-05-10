@@ -101,27 +101,29 @@ function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
 // that calls setPoseTarget / clearPoseTargets on its own schedule.
 const PROCEDURAL_ANIMS = {
   sit: () => {
-    // Living room appears: floor + couch + lamp + plant fade in. Kohai
-    // sits ON the couch (her hips lower into the couch silhouette).
+    // Cross-legged seated pose on a floor cushion. Hips drop low,
+    // upper legs swing forward + outward, knees fully fold so the
+    // shins come back under her thighs.
     container.dataset.room = 'livingroom';
-    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.10, lerp: 4 });
-    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.10, lerp: 4 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
-    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
+    setPoseTarget('leftUpperLeg',  { rx: 1.10, rz:  0.55, lerp: 4 });
+    setPoseTarget('rightUpperLeg', { rx: 1.10, rz: -0.55, lerp: 4 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.95, lerp: 4 });
+    setPoseTarget('rightLowerLeg', { rx: -1.95, lerp: 4 });
     setPoseTarget('spine',         { rx: 0.05, lerp: 4 });
-    setPoseTarget('leftUpperArm',  { rx: -0.4, lerp: 4 });
-    setPoseTarget('rightUpperArm', { rx: -0.4, lerp: 4 });
-    setPoseTarget('leftLowerArm',  { ry: -0.6, lerp: 4 });
-    setPoseTarget('rightLowerArm', { ry:  0.6, lerp: 4 });
-    if (hips) hips.position.y = -0.45;
-    say('Hai, sitting on the couch senpai~', 2500);
+    setPoseTarget('leftUpperArm',  { rx: -0.3, rz: REST_LEFT_UPPER_Z + 0.1, lerp: 4 });
+    setPoseTarget('rightUpperArm', { rx: -0.3, rz: REST_RIGHT_UPPER_Z - 0.1, lerp: 4 });
+    setPoseTarget('leftLowerArm',  { ry: -0.7, lerp: 4 });
+    setPoseTarget('rightLowerArm', { ry:  0.7, lerp: 4 });
+    hipsTargetY = -0.85; // sink to floor-cushion height
+    say('Hai, sitting down senpai~', 2500);
   },
   stand: () => {
     clearPoseTargets([
       'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg',
       'spine', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm',
+      'head',
     ]);
-    if (hips) hips.position.y = 0;
+    hipsTargetY = 0;
     delete container.dataset.room;
     say('Standing up!', 2000);
   },
@@ -138,7 +140,7 @@ const PROCEDURAL_ANIMS = {
     setPoseTarget('head',  { rx: 0.15, rz: 0.10, lerp: 3 });
     setPoseTarget('leftUpperArm',  { rx: -0.3, rz: -0.15, lerp: 3 });
     setPoseTarget('rightUpperArm', { rx: -0.3, rz:  0.15, lerp: 3 });
-    if (hips) hips.position.y = -0.6;
+    hipsTargetY = -1.10; // drop hips way down for lying-flat illusion
     setMoodExpression('sleepy');
     say('Oyasumi, senpai…', 3000);
   },
@@ -482,6 +484,9 @@ function exitCoding() {
 // — Walking: procedural step cycle on the legs while hips bob up & down.
 let walkPhase = 0;
 let walkActive = false;
+// Persistent hip Y target (procedural anims set this; animate loop lerps
+// toward it instead of always returning to 0).
+let hipsTargetY = 0;
 let leftUpperLeg = null, rightUpperLeg = null, leftLowerLeg = null, rightLowerLeg = null;
 
 // — Scenario engine: chain timed steps to play out a "walk over to read,
@@ -776,7 +781,9 @@ function animate() {
       if (hips)  hips.position.y = Math.abs(Math.sin(walkPhase)) * 0.06;
       if (spine) spine.rotation.x = -0.08;
     } else if (hips) {
-      hips.position.y += (0 - hips.position.y) * Math.min(1, dt * 5);
+      // Lerp toward the persistent hip target instead of always 0,
+      // so /kohai-play sit can lower the hips and keep them lowered.
+      hips.position.y += (hipsTargetY - hips.position.y) * Math.min(1, dt * 5);
     }
 
     // "Reading the message" pose — dramatic forward lean, head bowed.
@@ -907,7 +914,9 @@ function pickLine(state) {
   return lines ? lines[Math.floor(Math.random() * lines.length)] : '';
 }
 
+let currentState = 'idle';
 function setState(state, opts = {}) {
+  currentState = state;
   // Body angle hints + facial expression matching the mood.
   if (state === 'sleepy' && headBone) headBone.rotation.x = 0.5;
   if (state === 'panic') turnTo(Math.sin(performance.now() / 100) * 0.3);

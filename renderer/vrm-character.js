@@ -96,6 +96,60 @@ function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
   return true;
 }
 
+// Procedural fallbacks — when no .vrma file exists for a name, run a
+// hand-coded pose sequence using kohai_pose. Each entry is a function
+// that calls setPoseTarget / clearPoseTargets on its own schedule.
+const PROCEDURAL_ANIMS = {
+  sit: () => {
+    // Bend hips and knees forward as if sitting on an invisible chair.
+    setPoseTarget('leftUpperLeg',  { rx: 1.55, lerp: 4 });
+    setPoseTarget('rightUpperLeg', { rx: 1.55, lerp: 4 });
+    setPoseTarget('leftLowerLeg',  { rx: 1.55, lerp: 4 });
+    setPoseTarget('rightLowerLeg', { rx: 1.55, lerp: 4 });
+    setPoseTarget('spine',         { rx: -0.05, lerp: 4 });
+    if (hips) hips.position.y = -0.55;
+    say('Hai, sitting down senpai~', 2500);
+  },
+  stand: () => {
+    clearPoseTargets(['leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg', 'spine']);
+    if (hips) hips.position.y = 0;
+    say('Standing up!', 2000);
+  },
+  wave: () => {
+    setPoseTarget('rightUpperArm', { rx: -1.6, rz: 0.6, lerp: 8 });
+    setPoseTarget('rightLowerArm', { ry: -1.0, lerp: 8 });
+    let i = 0;
+    const tick = () => {
+      setPoseTarget('rightHand', { rx: i % 2 === 0 ? -0.8 : 0, lerp: 14 });
+      i++;
+      if (i < 6) setTimeout(tick, 280);
+      else setTimeout(() => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand']), 400);
+    };
+    tick();
+    say('Hi senpai!', 2000);
+  },
+  bow: () => {
+    setPoseTarget('spine', { rx: -0.55, lerp: 3 });
+    setPoseTarget('head',  { rx: 0.5,   lerp: 3 });
+    setTimeout(() => clearPoseTargets(['spine', 'head']), 1800);
+    say('Yoroshiku, senpai!', 2000);
+  },
+  thinking: () => {
+    setPoseTarget('rightUpperArm', { rx: -1.4, rz: 0.55, lerp: 6 });
+    setPoseTarget('rightLowerArm', { ry: -1.3, lerp: 6 });
+    setPoseTarget('rightHand',     { rx: -0.5, lerp: 6 });
+    setPoseTarget('head',          { rx: 0.18, rz: -0.12, lerp: 6 });
+    setTimeout(() => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand', 'head']), 2500);
+    say('Hmm…', 2000);
+  },
+  celebrate: () => {
+    setPoseTarget('leftUpperArm',  { rx: -2.4, rz: -0.4, lerp: 14 });
+    setPoseTarget('rightUpperArm', { rx: -2.4, rz:  0.4, lerp: 14 });
+    setTimeout(() => clearPoseTargets(['leftUpperArm', 'rightUpperArm']), 700);
+    say('Yatta!!', 2000);
+  },
+};
+
 function loadAnimationFiles(vrm, names) {
   return Promise.all(names.map((name) => new Promise((resolve) => {
     const url = `../assets/vrm-animations/${name}.vrma`;
@@ -1001,7 +1055,12 @@ const CONTROL_HANDLERS = {
   clear_pose: ({ bones }) => clearPoseTargets(bones),
   play_animation: ({ name, loop, fadeMs }) => {
     if (typeof name !== 'string') return;
-    playAnimation(name, { loop: !!loop, fadeMs: fadeMs || 350 });
+    const ok = playAnimation(name, { loop: !!loop, fadeMs: fadeMs || 350 });
+    if (!ok) {
+      // Procedural fallback for known animation names when the .vrma is missing.
+      const fallback = PROCEDURAL_ANIMS[name];
+      if (fallback) fallback();
+    }
   },
   skin: ({ name }) => {
     if (typeof name !== 'string') return;

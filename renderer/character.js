@@ -117,6 +117,48 @@ function basenameOf(p) {
   return p.split('/').filter(Boolean).pop() || '';
 }
 
+const keystrokesEl = document.getElementById('keystrokes');
+let codingTimer = null;
+let keystrokeInterval = null;
+
+const KEY_GLYPHS = ['{', '}', '()', ';', '=>', 'fn', 'let', 'const', 'if', 'tap', '++', '✓', '~~', 'def', 'fix'];
+
+function spawnKeystroke() {
+  if (!keystrokesEl) return;
+  const k = document.createElement('span');
+  k.className = 'key';
+  k.textContent = KEY_GLYPHS[Math.floor(Math.random() * KEY_GLYPHS.length)];
+  k.style.left = (10 + Math.random() * 70) + '%';
+  keystrokesEl.appendChild(k);
+  setTimeout(() => k.remove(), 1500);
+}
+
+function enterCoding(durationMs = 4000) {
+  container.dataset.coding = '1';
+  if (!keystrokeInterval) {
+    keystrokeInterval = setInterval(spawnKeystroke, 220);
+  }
+  clearTimeout(codingTimer);
+  codingTimer = setTimeout(exitCoding, durationMs);
+}
+
+function exitCoding() {
+  delete container.dataset.coding;
+  if (keystrokeInterval) {
+    clearInterval(keystrokeInterval);
+    keystrokeInterval = null;
+  }
+  if (keystrokesEl) keystrokesEl.innerHTML = '';
+}
+
+function fileChip(name) {
+  if (!name) return '';
+  return `<span class="file-chip">${name}</span>`;
+}
+
+// Tools that should trigger Kohai's "coding mode" laptop overlay.
+const CODING_TOOLS = new Set(['Edit', 'MultiEdit', 'Write', 'Bash']);
+
 function describeTool(data) {
   const tool = data?.tool_name || '';
   const input = data?.tool_input || {};
@@ -124,14 +166,14 @@ function describeTool(data) {
   switch (tool) {
     case 'Edit':
     case 'MultiEdit':
-      return file ? { state: 'thinking', text: `Editing ${file}, senpai~` } : null;
+      return file ? { state: 'thinking', text: `Editing ${file}, senpai~`, coding: true } : null;
     case 'Write':
-      return file ? { state: 'thinking', text: `Writing ${file}!` } : null;
+      return file ? { state: 'thinking', text: `Writing ${file}!`, coding: true } : null;
     case 'Read':
       return file ? { state: 'thinking', text: `Reading ${file}…` } : null;
     case 'Bash': {
       const cmd = (input.command || '').split(/\s+/)[0] || 'something';
-      return { state: 'thinking', text: `Running \`${cmd}\`…` };
+      return { state: 'thinking', text: `Running \`${cmd}\`…`, coding: true };
     }
     case 'Grep':
     case 'Glob':
@@ -175,8 +217,13 @@ const HOOK_HANDLERS = {
     const reaction = describeTool(data);
     if (!reaction) return;
     setState(reaction.state, { text: reaction.text });
+    if (reaction.coding) enterCoding(20000); // long window; PostToolUse will close it
   },
   PostToolUse: (data) => {
+    if (CODING_TOOLS.has(data?.tool_name)) {
+      // Linger for a beat so the "saved!" celebration overlaps the laptop fade.
+      setTimeout(exitCoding, 700);
+    }
     const reaction = describeToolResult(data);
     if (!reaction) return;
     setState(reaction.state, { text: reaction.text });

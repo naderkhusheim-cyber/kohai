@@ -87,6 +87,46 @@ function clampToDisplay(x, y, w, h) {
   };
 }
 
+let restingPosition = null; // remembers where to drift back to
+let driftAnim = null;
+
+function tweenPosition(targetX, targetY, durationMs = 600) {
+  if (!win || win.isDestroyed()) return;
+  if (driftAnim) { clearInterval(driftAnim); driftAnim = null; }
+  const [startX, startY] = win.getPosition();
+  const [w, h] = win.getSize();
+  const { x: tx, y: ty } = clampToDisplay(targetX, targetY, w, h);
+  const start = Date.now();
+  driftAnim = setInterval(() => {
+    if (!win || win.isDestroyed()) { clearInterval(driftAnim); driftAnim = null; return; }
+    const t = Math.min(1, (Date.now() - start) / durationMs);
+    // Ease-out cubic — fast start, gentle settle.
+    const e = 1 - Math.pow(1 - t, 3);
+    const cx = Math.round(startX + (tx - startX) * e);
+    const cy = Math.round(startY + (ty - startY) * e);
+    try { win.setPosition(cx, cy); } catch (_) {}
+    if (t >= 1) { clearInterval(driftAnim); driftAnim = null; }
+  }, 16);
+}
+
+function moveToWorkPosition() {
+  if (!win || win.isDestroyed()) return;
+  const [curX, curY] = win.getPosition();
+  if (!restingPosition) restingPosition = { x: curX, y: curY };
+  const { x: dx, y: dy, width: dw, height: dh } = getDisplayWorkArea();
+  const [w, h] = win.getSize();
+  // Slide toward bottom-center — like she walked over to peek at the work.
+  const targetX = dx + Math.round((dw - w) / 2);
+  const targetY = dy + dh - h - 24;
+  tweenPosition(targetX, targetY, 700);
+}
+
+function moveToRest() {
+  if (!restingPosition) return;
+  tweenPosition(restingPosition.x, restingPosition.y, 800);
+  restingPosition = null;
+}
+
 function createWindow() {
   const size = SIZES.medium;
   const pos = computePosition('bottom-right', size.w, size.h);
@@ -178,6 +218,14 @@ app.whenReady().then(() => {
       if (eventType === 'UserPromptSubmit') {
         handleUserPrompt(data);
         return;
+      }
+      // Move-to-action: slide toward center-bottom on coding tools.
+      const codingTools = new Set(['Edit', 'MultiEdit', 'Write', 'Bash']);
+      if (eventType === 'PreToolUse' && codingTools.has(data?.tool_name)) {
+        moveToWorkPosition();
+      } else if (eventType === 'Stop') {
+        // Session settled — drift back home.
+        setTimeout(moveToRest, 1500);
       }
       if (
         (eventType === 'PreToolUse' ||

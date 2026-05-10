@@ -90,7 +90,78 @@ html, body {
   transition: opacity 0.25s ease, transform 0.25s ease;
   text-align: center;
   -webkit-app-region: no-drag;
-  z-index: 2;
+  z-index: 4;
+}
+
+.bubble .file-chip {
+  display: inline-block;
+  background: #f2f4f8;
+  color: #4a5160;
+  padding: 1px 7px;
+  margin-right: 5px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+/* Laptop overlay — appears when Kohai is "coding". */
+.laptop {
+  position: absolute;
+  bottom: 18%;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px) scale(0.6);
+  width: 55%;
+  max-width: 220px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  z-index: 3;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.4));
+}
+.laptop svg { width: 100%; height: auto; display: block; }
+
+.kohai-container[data-coding="1"] .laptop {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+  animation: laptop-bounce 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes laptop-bounce {
+  from { transform: translateX(-50%) translateY(0) scale(1) rotate(-1.5deg); }
+  to   { transform: translateX(-50%) translateY(-3px) scale(1.02) rotate(1.5deg); }
+}
+
+.laptop-caret {
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+@keyframes caret-blink {
+  50% { opacity: 0; }
+}
+
+/* Floating keystrokes that drift up from the laptop. */
+.keystrokes {
+  position: absolute;
+  bottom: 70%;
+  left: 0;
+  right: 0;
+  height: 60px;
+  pointer-events: none;
+}
+.keystrokes .key {
+  position: absolute;
+  bottom: 0;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  color: #fff;
+  text-shadow: 0 0 4px rgba(0, 200, 255, 0.85), 0 0 1px #000;
+  opacity: 0;
+  animation: key-float 1.4s ease-out forwards;
+  white-space: nowrap;
+}
+@keyframes key-float {
+  0%   { opacity: 0; transform: translateY(0)    scale(0.7); }
+  18%  { opacity: 1; transform: translateY(-8px) scale(1); }
+  100% { opacity: 0; transform: translateY(-46px) scale(0.95); }
 }
 
 .bubble.show {

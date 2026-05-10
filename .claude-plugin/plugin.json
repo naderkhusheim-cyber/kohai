@@ -1,0 +1,11 @@
+{
+  "name": "kohai",
+  "description": "Anime kohai companion for Claude Code — reacts to your tools, speaks via VOICEVOX, lives next to your terminal.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Nader Khusheim"
+  },
+  "homepage": "https://github.com/naderkhusheim-cyber/kohai",
+  "repository": "https://github.com/naderkhusheim-cyber/kohai.git",
+  "keywords": ["companion", "anime", "voicevox", "live2d", "tts"]
+}

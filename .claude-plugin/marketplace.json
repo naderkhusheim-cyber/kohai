@@ -1,0 +1,22 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "kohai-marketplace",
+  "description": "Anime kohai companion for Claude Code.",
+  "owner": {
+    "name": "Nader Khusheim"
+  },
+  "plugins": [
+    {
+      "name": "kohai",
+      "description": "Anime kohai companion for Claude Code — reacts to your tools, speaks via VOICEVOX, lives next to your terminal.",
+      "author": { "name": "Nader Khusheim" },
+      "category": "fun",
+      "source": {
+        "source": "git",
+        "url": "https://github.com/naderkhusheim-cyber/kohai.git",
+        "ref": "main"
+      },
+      "homepage": "https://github.com/naderkhusheim-cyber/kohai"
+    }
+  ]
+}

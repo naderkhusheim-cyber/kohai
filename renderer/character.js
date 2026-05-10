@@ -112,17 +112,78 @@ function resetIdleTimer() {
   }, 5 * 60 * 1000);
 }
 
+function basenameOf(p) {
+  if (!p || typeof p !== 'string') return '';
+  return p.split('/').filter(Boolean).pop() || '';
+}
+
+function describeTool(data) {
+  const tool = data?.tool_name || '';
+  const input = data?.tool_input || {};
+  const file = basenameOf(input.file_path);
+  switch (tool) {
+    case 'Edit':
+    case 'MultiEdit':
+      return file ? { state: 'thinking', text: `Editing ${file}, senpai~` } : null;
+    case 'Write':
+      return file ? { state: 'thinking', text: `Writing ${file}!` } : null;
+    case 'Read':
+      return file ? { state: 'thinking', text: `Reading ${file}…` } : null;
+    case 'Bash': {
+      const cmd = (input.command || '').split(/\s+/)[0] || 'something';
+      return { state: 'thinking', text: `Running \`${cmd}\`…` };
+    }
+    case 'Grep':
+    case 'Glob':
+      return { state: 'thinking', text: 'Searching the code…' };
+    case 'WebFetch':
+    case 'WebSearch':
+      return { state: 'thinking', text: 'Looking it up online~' };
+    case 'TodoWrite':
+      return { state: 'thinking', text: 'Updating my todo list!' };
+    case 'Task':
+      return { state: 'thinking', text: `Sending a subagent…` };
+    default:
+      return tool ? { state: 'thinking', text: `Hmm, ${tool}…` } : null;
+  }
+}
+
+function describeToolResult(data) {
+  const tool = data?.tool_name || '';
+  const file = basenameOf(data?.tool_input?.file_path);
+  const failed = data?.tool_response?.is_error || data?.is_error;
+  if (failed) return { state: 'error', text: file ? `Eh?! ${file} broke…` : 'Something went wrong…' };
+  switch (tool) {
+    case 'Edit':
+    case 'MultiEdit':
+    case 'Write':
+      return { state: 'happy', text: file ? `Saved ${file}! Yatta~` : 'Saved! Yatta~' };
+    case 'Read':
+      return null; // silent — reading is too frequent to bubble
+    case 'Bash':
+      return { state: 'happy', text: 'Done!' };
+    default:
+      return { state: 'happy', text: pickLine('happy') };
+  }
+}
+
 const HOOK_HANDLERS = {
-  SessionStart: () => setState('happy'),
+  SessionStart: () => setState('happy', { text: 'Konnichiwa, senpai!' }),
   SessionEnd: () => setState('sleepy'),
-  UserPromptSubmit: () => setState('thinking'),
-  PreToolUse: () => setState('thinking'),
-  PostToolUse: () => {
-    setState('happy');
-    setTimeout(() => { if (currentState === 'happy') setState('idle', { silent: true }); }, 4000);
+  UserPromptSubmit: () => setState('thinking', { silent: true }),
+  PreToolUse: (data) => {
+    const reaction = describeTool(data);
+    if (!reaction) return;
+    setState(reaction.state, { text: reaction.text });
+  },
+  PostToolUse: (data) => {
+    const reaction = describeToolResult(data);
+    if (!reaction) return;
+    setState(reaction.state, { text: reaction.text });
+    setTimeout(() => { if (currentState === reaction.state) setState('idle', { silent: true }); }, 4000);
   },
   PostToolUseFailure: () => setState('error'),
-  SubagentStop: () => setState('happy'),
+  SubagentStop: () => setState('happy', { text: 'Subagent finished!' }),
   Stop: () => {
     setState('happy');
     setTimeout(() => { if (currentState === 'happy') setState('idle', { silent: true }); }, 5000);

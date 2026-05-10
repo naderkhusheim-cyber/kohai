@@ -254,6 +254,103 @@ function clearScenario() {
   walkPhase = 0;
 }
 
+// — Autonomous behavior engine —
+// Small reaction pose-sequences (1–2 s each) that fire automatically on
+// Claude events. Also runs an idle ticker so Kohai stretches, looks
+// around, etc. when nothing else is happening — gives her presence even
+// during silence.
+const BEHAVIORS = {
+  fistPump: [
+    { ms: 0,   enter: () => {
+      setPoseTarget('rightUpperArm', { rx: -2.4, rz: 0.4, lerp: 14 });
+      setPoseTarget('rightLowerArm', { ry: -0.4, lerp: 14 });
+    } },
+    { ms: 450, enter: () => clearPoseTargets(['rightUpperArm', 'rightLowerArm']) },
+  ],
+  doublePump: [
+    { ms: 0, enter: () => {
+      setPoseTarget('leftUpperArm',  { rx: -2.4, rz: -0.4, lerp: 14 });
+      setPoseTarget('rightUpperArm', { rx: -2.4, rz:  0.4, lerp: 14 });
+    } },
+    { ms: 600, enter: () => clearPoseTargets(['leftUpperArm', 'rightUpperArm']) },
+  ],
+  thinkingChin: [
+    { ms: 0, enter: () => {
+      setPoseTarget('rightUpperArm', { rx: -1.4, rz: 0.55 });
+      setPoseTarget('rightLowerArm', { ry: -1.3 });
+      setPoseTarget('rightHand',     { rx: -0.5 });
+      setPoseTarget('head',          { rx: 0.18, rz: -0.12 });
+    } },
+    { ms: 2200, enter: () => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand', 'head']) },
+  ],
+  lookAround: [
+    { ms: 0,    enter: () => setPoseTarget('head', { ry:  0.55 }) },
+    { ms: 900,  enter: () => setPoseTarget('head', { ry: -0.55 }) },
+    { ms: 1800, enter: () => clearPoseTargets(['head']) },
+  ],
+  stretch: [
+    { ms: 0,   enter: () => {
+      setPoseTarget('leftUpperArm',  { rx: -2.7, rz: -0.5, lerp: 4 });
+      setPoseTarget('rightUpperArm', { rx: -2.7, rz:  0.5, lerp: 4 });
+      setPoseTarget('spine',         { rx: -0.20 });
+    } },
+    { ms: 1100, enter: () => clearPoseTargets(['leftUpperArm', 'rightUpperArm', 'spine']) },
+  ],
+  facePalm: [
+    { ms: 0, enter: () => {
+      setPoseTarget('rightUpperArm', { rx: -1.7, rz: 0.45, lerp: 10 });
+      setPoseTarget('rightLowerArm', { ry: -1.95 });
+      setPoseTarget('head',          { rx: 0.45 });
+    } },
+    { ms: 1600, enter: () => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'head']) },
+  ],
+  bow: [
+    { ms: 0,   enter: () => { setPoseTarget('spine', { rx: -0.45 }); setPoseTarget('head', { rx: 0.4 }); } },
+    { ms: 700, enter: () => clearPoseTargets(['spine', 'head']) },
+  ],
+  peek: [
+    // tilt forward and to the side, like she's leaning over to read
+    { ms: 0,   enter: () => { setPoseTarget('spine', { rx: -0.18, ry: 0.15 }); setPoseTarget('head', { rx: 0.25 }); } },
+    { ms: 1200, enter: () => clearPoseTargets(['spine', 'head']) },
+  ],
+  shrug: [
+    { ms: 0,   enter: () => {
+      setPoseTarget('leftUpperArm',  { rx: -0.45, rz: -1.05, lerp: 12 });
+      setPoseTarget('rightUpperArm', { rx: -0.45, rz:  1.05, lerp: 12 });
+      setPoseTarget('leftLowerArm',  { ry: -0.95 });
+      setPoseTarget('rightLowerArm', { ry:  0.95 });
+    } },
+    { ms: 800, enter: () => clearPoseTargets(['leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm']) },
+  ],
+};
+
+let lastBehaviorAt = 0;
+const BEHAVIOR_COOLDOWN_MS = 1500;
+
+function playBehavior(name) {
+  if (scenarioActive) return false;
+  if (performance.now() - lastBehaviorAt < BEHAVIOR_COOLDOWN_MS) return false;
+  const seq = BEHAVIORS[name];
+  if (!seq) return false;
+  lastBehaviorAt = performance.now();
+  runScenario(seq.map((s) => ({ ...s }))); // shallow copy
+  return true;
+}
+
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+// Idle ticker — every ~25–45 s of nothing happening, Kohai fidgets.
+let lastActivityAt = performance.now();
+function noteActivity() { lastActivityAt = performance.now(); }
+setInterval(() => {
+  const idleMs = performance.now() - lastActivityAt;
+  if (idleMs < 25000) return;
+  if (scenarioActive || coding) return;
+  // Random fidget.
+  playBehavior(pickRandom(['lookAround', 'stretch', 'thinkingChin', 'lookAround']));
+  lastActivityAt = performance.now();
+}, 5000);
+
 function runScenario(steps) {
   clearScenario();
   scenarioQueue = steps.slice();
@@ -558,30 +655,48 @@ function stopScenario(summary) {
 }
 
 const HOOK_HANDLERS = {
-  SessionStart: () => setState('happy', { text: 'Konnichiwa, senpai!' }),
-  SessionEnd:   () => setState('sleepy'),
+  SessionStart: () => { noteActivity(); setState('happy', { text: 'Konnichiwa, senpai!' }); playBehavior('bow'); },
+  SessionEnd:   () => { setState('sleepy'); },
   UserPromptSubmit: (data) => {
+    noteActivity();
     const prompt = data?.prompt || data?.user_prompt || '';
     userPromptScenario(prompt);
   },
   PreToolUse: (data) => {
-    if (scenarioActive) return; // let the scenario run; per-tool reactions resume after
+    noteActivity();
+    if (scenarioActive) return;
     const r = describeTool(data);
     if (!r) return;
     setState(r.state, { text: r.text });
     if (r.coding) enterCoding();
+    // Behavior layer — small autonomous reaction depending on tool type.
+    const tool = data?.tool_name;
+    if (tool === 'Read' || tool === 'Grep' || tool === 'Glob') playBehavior('peek');
+    else if (tool === 'WebFetch' || tool === 'WebSearch') playBehavior('thinkingChin');
+    else if (tool === 'Task') playBehavior('lookAround');
   },
   PostToolUse: (data) => {
+    noteActivity();
     if (CODING_TOOLS.has(data?.tool_name)) setTimeout(exitCoding, 700);
+    const failed = data?.tool_response?.is_error || data?.is_error;
+    if (failed) {
+      setState('error', { text: 'Eh?! something broke…' });
+      playBehavior('facePalm');
+      return;
+    }
     if (scenarioActive) return;
     const file = basenameOf(data?.tool_input?.file_path);
     setState('happy', { text: file ? `Saved ${file}! Yatta~` : 'Done!' });
+    playBehavior(pickRandom(['fistPump', 'doublePump', 'bow']));
   },
+  PostToolUseFailure: () => { setState('error'); playBehavior('facePalm'); },
+  SubagentStop: () => { setState('happy', { text: 'Subagent finished!' }); playBehavior('fistPump'); },
   Stop: (data) => {
+    noteActivity();
     const summary = data?.message || data?.text || '';
     stopScenario(summary);
   },
-  Notification: () => setState('thinking'),
+  Notification: () => { noteActivity(); setState('thinking'); playBehavior('thinkingChin'); },
 };
 
 const CONTROL_HANDLERS = {

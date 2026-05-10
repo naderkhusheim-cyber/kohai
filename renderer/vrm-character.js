@@ -137,6 +137,10 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
     rightHand      = h.getNormalizedBoneNode('rightHand');
     spine          = h.getNormalizedBoneNode('spine');
     hips           = h.getNormalizedBoneNode('hips');
+    leftUpperLeg   = h.getNormalizedBoneNode('leftUpperLeg');
+    rightUpperLeg  = h.getNormalizedBoneNode('rightUpperLeg');
+    leftLowerLeg   = h.getNormalizedBoneNode('leftLowerLeg');
+    rightLowerLeg  = h.getNormalizedBoneNode('rightLowerLeg');
   }
   applyIdlePose();
 
@@ -192,9 +196,55 @@ function exitCoding() {
   if (keystrokesEl) keystrokesEl.innerHTML = '';
 }
 
-// — Walking: simple left-right step animation by translating hips.
+// — Walking: procedural step cycle on the legs while hips bob up & down.
 let walkPhase = 0;
 let walkActive = false;
+let leftUpperLeg = null, rightUpperLeg = null, leftLowerLeg = null, rightLowerLeg = null;
+
+// — Scenario engine: chain timed steps to play out a "walk over to read,
+// turn around, walk back, sit and code, stand up and report" sequence.
+let scenarioActive = false;
+const scenarioState = { read: false, glasses: false, lookOver: false };
+let scenarioQueue = [];
+let scenarioStepEnd = 0;
+let scenarioCurrentTick = null;
+
+function clearScenario() {
+  scenarioQueue = [];
+  scenarioActive = false;
+  scenarioStepEnd = 0;
+  scenarioCurrentTick = null;
+  scenarioState.read = false;
+  scenarioState.glasses = false;
+  scenarioState.lookOver = false;
+  walkActive = false;
+  walkPhase = 0;
+}
+
+function runScenario(steps) {
+  clearScenario();
+  scenarioQueue = steps.slice();
+  scenarioActive = true;
+  advanceScenario();
+}
+
+function advanceScenario() {
+  scenarioCurrentTick = null;
+  const step = scenarioQueue.shift();
+  if (!step) {
+    scenarioActive = false;
+    return;
+  }
+  if (typeof step.enter === 'function') step.enter();
+  scenarioStepEnd = performance.now() + (step.ms || 0);
+  scenarioCurrentTick = step.tick || null;
+}
+
+function tickScenario(now, dt) {
+  if (!scenarioActive) return;
+  if (scenarioCurrentTick) scenarioCurrentTick(now, dt);
+  if (now >= scenarioStepEnd) advanceScenario();
+}
 
 // — Animation loop —
 const clock = new THREE.Clock();
@@ -218,6 +268,44 @@ function animate() {
       const dy = THREE.MathUtils.clamp(-local.y * 0.2, -0.4, 0.4);
       headBone.rotation.x += (dy - headBone.rotation.x) * Math.min(1, dt * 5);
       headBone.rotation.y += (dx - headBone.rotation.y) * Math.min(1, dt * 5);
+    }
+
+    // Procedural walking — leg cycle + hip bob.
+    if (walkActive) {
+      walkPhase += dt * 7;
+      const swing = Math.sin(walkPhase) * 0.45;
+      if (leftUpperLeg)  leftUpperLeg.rotation.x  =  swing;
+      if (rightUpperLeg) rightUpperLeg.rotation.x = -swing;
+      // Knees bend on the back-swing only.
+      if (leftLowerLeg)  leftLowerLeg.rotation.x  = Math.max(0, -swing) * 0.9;
+      if (rightLowerLeg) rightLowerLeg.rotation.x = Math.max(0,  swing) * 0.9;
+      // Arms swing opposite to the legs.
+      if (leftUpperArm)  leftUpperArm.rotation.x  = -swing * 0.5;
+      if (rightUpperArm) rightUpperArm.rotation.x =  swing * 0.5;
+      // Hips bob up & down as feet plant.
+      if (hips) hips.position.y = Math.abs(Math.sin(walkPhase)) * 0.04;
+    } else if (hips) {
+      hips.position.y += (0 - hips.position.y) * Math.min(1, dt * 5);
+    }
+
+    // "Reading the message" pose — head and chest lean forward, eyes down.
+    if (scenarioState.read) {
+      if (headBone) headBone.rotation.x += (0.45 - headBone.rotation.x) * Math.min(1, dt * 5);
+      if (spine)    spine.rotation.x    += (-0.1 - spine.rotation.x)    * Math.min(1, dt * 5);
+      lookActive = false;
+    }
+
+    // "Glasses off" gesture — right hand rises toward the face, head tilts.
+    if (scenarioState.glasses) {
+      if (rightUpperArm) rightUpperArm.rotation.x += (-1.4 - rightUpperArm.rotation.x) * Math.min(1, dt * 6);
+      if (rightUpperArm) rightUpperArm.rotation.z += (0.3 - rightUpperArm.rotation.z)  * Math.min(1, dt * 6);
+      if (rightLowerArm) rightLowerArm.rotation.y += (1.2 - rightLowerArm.rotation.y)  * Math.min(1, dt * 6);
+      if (headBone) headBone.rotation.z += (0.15 - headBone.rotation.z) * Math.min(1, dt * 5);
+    }
+
+    // "Glance over the shoulder" — head turn during turn-around step.
+    if (scenarioState.lookOver) {
+      if (headBone) headBone.rotation.y += (0.7 - headBone.rotation.y) * Math.min(1, dt * 5);
     }
 
     if (coding) {
@@ -252,13 +340,8 @@ function animate() {
       lerpTo(rightHand, 'x', 0);
     }
 
-    // Walking bob.
-    if (walkActive && hips) {
-      walkPhase += dt * 6;
-      hips.position.y = Math.abs(Math.sin(walkPhase)) * 0.04;
-    } else if (hips && hips.position.y !== 0) {
-      hips.position.y += (0 - hips.position.y) * Math.min(1, dt * 5);
-    }
+    // Drive scenario state machine.
+    tickScenario(performance.now(), dt);
 
     if (mixer) mixer.update(dt);
     vrm.update(dt);
@@ -343,11 +426,56 @@ function describeTool(data) {
   }
 }
 
+// — Scenario sequences —
+//
+// userPromptScenario: the choreography Nader described. Kohai gets up
+// from her seat, walks left to "read" the user's message, looks over,
+// turns back, walks back to her desk, and starts coding.
+function userPromptScenario(prompt) {
+  exitCoding();
+  runScenario([
+    { ms: 350, enter: () => say('Mm? Senpai said something…', 1200) },
+    { ms: 900, enter: () => { walkActive = true; turnTo(-0.6); } },
+    { ms: 900, enter: () => {
+      walkActive = false;
+      scenarioState.read = true;
+      const preview = (prompt || '').slice(0, 60);
+      if (preview) say(`「${preview}${prompt && prompt.length > 60 ? '…' : ''}」`, 1500);
+    } },
+    { ms: 700, enter: () => { scenarioState.lookOver = true; } },
+    { ms: 700, enter: () => { scenarioState.lookOver = false; scenarioState.read = false; turnTo(Math.PI); } }, // turn around
+    { ms: 700, enter: () => { turnTo(0); } }, // turn back
+    { ms: 900, enter: () => { walkActive = true; } },
+    { ms: 900, enter: () => { walkActive = false; lookActive = true; setState('thinking', { text: 'Time to code!' }); enterCoding(60000); } },
+  ]);
+}
+
+// stopScenario: when Claude is done, Kohai stops coding, "removes her
+// glasses" with a hand-to-face gesture, says "sugoi" + a short summary,
+// and returns to idle.
+function stopScenario(summary) {
+  exitCoding();
+  runScenario([
+    { ms: 400, enter: () => { /* return to rest */ } },
+    { ms: 800, enter: () => { scenarioState.glasses = true; say('Sugoi… *takes off glasses*', 1500); } },
+    { ms: 1500, enter: () => {
+      scenarioState.glasses = false;
+      const text = summary || 'Done, senpai! Check it out~';
+      setState('happy', { text });
+    } },
+    { ms: 800, enter: () => { /* settle */ } },
+  ]);
+}
+
 const HOOK_HANDLERS = {
   SessionStart: () => setState('happy', { text: 'Konnichiwa, senpai!' }),
   SessionEnd:   () => setState('sleepy'),
-  UserPromptSubmit: () => setState('thinking', { silent: true }),
+  UserPromptSubmit: (data) => {
+    const prompt = data?.prompt || data?.user_prompt || '';
+    userPromptScenario(prompt);
+  },
   PreToolUse: (data) => {
+    if (scenarioActive) return; // let the scenario run; per-tool reactions resume after
     const r = describeTool(data);
     if (!r) return;
     setState(r.state, { text: r.text });
@@ -355,10 +483,14 @@ const HOOK_HANDLERS = {
   },
   PostToolUse: (data) => {
     if (CODING_TOOLS.has(data?.tool_name)) setTimeout(exitCoding, 700);
+    if (scenarioActive) return;
     const file = basenameOf(data?.tool_input?.file_path);
     setState('happy', { text: file ? `Saved ${file}! Yatta~` : 'Done!' });
   },
-  Stop: () => setState('happy'),
+  Stop: (data) => {
+    const summary = data?.message || data?.text || '';
+    stopScenario(summary);
+  },
   Notification: () => setState('thinking'),
 };
 

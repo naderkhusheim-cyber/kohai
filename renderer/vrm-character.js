@@ -118,13 +118,28 @@ const PROCEDURAL_ANIMS = {
     say('Hai, sitting down senpai~', 2500);
   },
   stand: () => {
+    // Actively animate legs back to straight + spine to neutral.
+    // clearPoseTargets alone leaves bones in their last-driven rotation
+    // (sit pose retained legs bent). Targeting 0 explicitly is what
+    // makes her actually stand up.
+    setPoseTarget('leftUpperLeg',  { rx: 0, rz: 0, lerp: 5 });
+    setPoseTarget('rightUpperLeg', { rx: 0, rz: 0, lerp: 5 });
+    setPoseTarget('leftLowerLeg',  { rx: 0, lerp: 5 });
+    setPoseTarget('rightLowerLeg', { rx: 0, lerp: 5 });
+    setPoseTarget('spine',         { rx: 0, rz: 0, lerp: 5 });
+    setPoseTarget('head',          { rx: 0, rz: 0, ry: 0, lerp: 5 });
     clearPoseTargets([
-      'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg',
-      'spine', 'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm',
-      'head',
+      'leftUpperArm', 'rightUpperArm', 'leftLowerArm', 'rightLowerArm',
+      'leftHand', 'rightHand',
     ]);
     hipsTargetY = 0;
     delete container.dataset.room;
+    // Once she's fully stood up, release the leg/spine targets so
+    // future motions aren't fighting our zero-target.
+    setTimeout(() => clearPoseTargets([
+      'leftUpperLeg', 'rightUpperLeg', 'leftLowerLeg', 'rightLowerLeg',
+      'spine', 'head',
+    ]), 1300);
     say('Standing up!', 2000);
   },
   sleep: () => {

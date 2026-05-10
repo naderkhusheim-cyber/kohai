@@ -270,28 +270,33 @@ function animate() {
       headBone.rotation.y += (dx - headBone.rotation.y) * Math.min(1, dt * 5);
     }
 
-    // Procedural walking — leg cycle + hip bob.
+    // Procedural walking — exaggerated step cycle so it's actually visible
+    // in the small overlay window. Big leg & arm swing, visible hip bob.
     if (walkActive) {
-      walkPhase += dt * 7;
-      const swing = Math.sin(walkPhase) * 0.45;
+      walkPhase += dt * 5; // slower cadence, easier to track visually
+      const swing = Math.sin(walkPhase) * 0.7;        // ±40° leg swing
       if (leftUpperLeg)  leftUpperLeg.rotation.x  =  swing;
       if (rightUpperLeg) rightUpperLeg.rotation.x = -swing;
-      // Knees bend on the back-swing only.
-      if (leftLowerLeg)  leftLowerLeg.rotation.x  = Math.max(0, -swing) * 0.9;
-      if (rightLowerLeg) rightLowerLeg.rotation.x = Math.max(0,  swing) * 0.9;
-      // Arms swing opposite to the legs.
-      if (leftUpperArm)  leftUpperArm.rotation.x  = -swing * 0.5;
-      if (rightUpperArm) rightUpperArm.rotation.x =  swing * 0.5;
-      // Hips bob up & down as feet plant.
-      if (hips) hips.position.y = Math.abs(Math.sin(walkPhase)) * 0.04;
+      // Knees bend visibly on the back-swing.
+      if (leftLowerLeg)  leftLowerLeg.rotation.x  = Math.max(0, -swing) * 1.4;
+      if (rightLowerLeg) rightLowerLeg.rotation.x = Math.max(0,  swing) * 1.4;
+      // Arms swing opposite to the legs (clearly).
+      if (leftUpperArm)  { leftUpperArm.rotation.x  = -swing * 0.9; leftUpperArm.rotation.z  = REST_LEFT_UPPER_Z;  }
+      if (rightUpperArm) { rightUpperArm.rotation.x =  swing * 0.9; rightUpperArm.rotation.z = REST_RIGHT_UPPER_Z; }
+      // Hips bob up & down + slight forward lean.
+      if (hips)  hips.position.y = Math.abs(Math.sin(walkPhase)) * 0.06;
+      if (spine) spine.rotation.x = -0.08;
     } else if (hips) {
       hips.position.y += (0 - hips.position.y) * Math.min(1, dt * 5);
     }
 
-    // "Reading the message" pose — head and chest lean forward, eyes down.
+    // "Reading the message" pose — dramatic forward lean, head bowed.
     if (scenarioState.read) {
-      if (headBone) headBone.rotation.x += (0.45 - headBone.rotation.x) * Math.min(1, dt * 5);
-      if (spine)    spine.rotation.x    += (-0.1 - spine.rotation.x)    * Math.min(1, dt * 5);
+      if (headBone) headBone.rotation.x += (0.8 - headBone.rotation.x) * Math.min(1, dt * 5);
+      if (spine)    spine.rotation.x    += (-0.35 - spine.rotation.x)  * Math.min(1, dt * 5);
+      // Hands clasp at chest level — like she's holding the message.
+      if (leftUpperArm)  leftUpperArm.rotation.x  += (-0.6 - leftUpperArm.rotation.x)  * Math.min(1, dt * 5);
+      if (rightUpperArm) rightUpperArm.rotation.x += (-0.6 - rightUpperArm.rotation.x) * Math.min(1, dt * 5);
       lookActive = false;
     }
 
@@ -448,35 +453,39 @@ function userPromptScenario(prompt) {
   exitCoding();
   runScenario([
     // 1. Notice the message
-    { ms: 600, enter: () => { lookActive = true; say('Mm? Senpai said something…', 1500); } },
-    // 2. Stand up + walk LEFT to "read the message". Window glides left.
-    { ms: 1800, enter: () => {
+    { ms: 1200, enter: () => { lookActive = true; say('Mm? Senpai said something…', 1500); } },
+    // 2. Walk LEFT to "read" the message. Window glides far-left over 3s,
+    //    long enough that the leg cycle is unambiguously visible.
+    { ms: 3000, enter: () => {
+      say('Going to read it…', 2500);
       walkActive = true;
-      turnTo(-0.4);
-      requestWalk(0.05, 0.40, 1700); // far-left, mid-height
+      turnTo(-0.5);
+      requestWalk(0.05, 0.40, 2900);
     } },
-    // 3. Stop. Lean forward and "read" — show the actual prompt.
-    { ms: 1800, enter: () => {
+    // 3. Stop and lean forward dramatically — show the actual prompt text.
+    { ms: 3000, enter: () => {
       walkActive = false;
       turnTo(0);
       scenarioState.read = true;
       const preview = (prompt || '').slice(0, 80);
-      if (preview) say(`「${preview}${prompt && prompt.length > 80 ? '…' : ''}」`, 2000);
+      if (preview) say(`「${preview}${prompt && prompt.length > 80 ? '…' : ''}」`, 2800);
     } },
     // 4. Glance over the shoulder
-    { ms: 700, enter: () => { scenarioState.lookOver = true; } },
-    // 5. Turn fully around (back toward camera)
-    { ms: 800, enter: () => {
+    { ms: 1200, enter: () => { scenarioState.lookOver = true; } },
+    // 5. Turn FULLY around (back to camera)
+    { ms: 1500, enter: () => {
       scenarioState.lookOver = false;
       scenarioState.read = false;
       turnTo(Math.PI);
+      say('Hmm, I see…', 1300);
     } },
     // 6. Turn back forward
-    { ms: 700, enter: () => { turnTo(0); } },
-    // 7. Walk back to the desk (right side). Window glides right.
-    { ms: 1800, enter: () => {
+    { ms: 1200, enter: () => { turnTo(0); } },
+    // 7. Walk back to the desk (right side). Long enough to see the legs.
+    { ms: 3000, enter: () => {
+      say('Off to my desk!', 2500);
       walkActive = true;
-      requestWalk(0.75, 0.55, 1700);
+      requestWalk(0.75, 0.55, 2900);
     } },
     // 8. Sit down at her desk and start coding
     { ms: 600, enter: () => {

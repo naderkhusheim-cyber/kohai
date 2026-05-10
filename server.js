@@ -8,7 +8,7 @@ const KOHAI_DIR = path.join(os.homedir(), '.kohai');
 const TOKEN_PATH = path.join(KOHAI_DIR, 'token');
 const PORT = 17455;
 
-const VALID_CONTROLS = ['say', 'motion', 'size', 'position', 'hide', 'show'];
+const VALID_CONTROLS = ['say', 'motion', 'size', 'position', 'hide', 'show', 'walk'];
 
 function getOrCreateToken() {
   fs.mkdirSync(KOHAI_DIR, { recursive: true });

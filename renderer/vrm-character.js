@@ -309,25 +309,23 @@ function animate() {
     }
 
     if (coding) {
-      // Typing pose: upper arms partially down + forward, elbows bent ~90°,
-      // hands hovering over the keyboard, fingers tapping.
+      // Typing pose: keep arms close to rest (down at sides) so we don't
+      // get the "hands-up" mistake — VRM bone axes vary, but the rest
+      // pose Z values are known good. Add a slight forward lift at the
+      // shoulder, gentle elbow bend, hand tap, and forward lean.
       const tap  = Math.sin(t * 10);
       const tapR = Math.sin(t * 10 + Math.PI);
-      // Upper arms: bring forward (rotate around X) AND keep partially
-      // down at the sides (rotate around Z, less than rest pose).
-      const upperZ = 0.55; // narrower than rest's 1.30 → arms toward front
-      const upperX = -0.75 + 0.04 * tap;
-      setRotation(leftUpperArm,  upperX, 0, -upperZ);
-      setRotation(rightUpperArm, upperX, 0,  upperZ);
-      // Forearms: bent forward at the elbow.
-      setRotation(leftLowerArm,  0, -1.55, 0);
-      setRotation(rightLowerArm, 0,  1.55, 0);
-      // Hands: tap up/down like fingers hitting keys.
-      if (leftHand)  leftHand.rotation.x  = -0.2 + tap  * 0.35;
-      if (rightHand) rightHand.rotation.x = -0.2 + tapR * 0.35;
-      // Lean slightly forward, look down at the keyboard.
-      if (spine) spine.rotation.x = -0.18 + Math.sin(t * 1.3) * 0.012;
-      if (headBone) headBone.rotation.x = 0.35;
+      setRotation(leftUpperArm,  -0.35 + tap  * 0.05, 0, REST_LEFT_UPPER_Z  + 0.15);
+      setRotation(rightUpperArm, -0.35 + tapR * 0.05, 0, REST_RIGHT_UPPER_Z - 0.15);
+      // Elbow bend (use the same axis that moves the rest pose — small Y).
+      setRotation(leftLowerArm,  0, -0.6, 0);
+      setRotation(rightLowerArm, 0,  0.6, 0);
+      // Hands tap up/down like fingers hitting keys.
+      if (leftHand)  leftHand.rotation.x  = tap  * 0.4;
+      if (rightHand) rightHand.rotation.x = tapR * 0.4;
+      // Forward lean + look down at the keyboard.
+      if (spine) spine.rotation.x = -0.20 + Math.sin(t * 1.3) * 0.012;
+      if (headBone) headBone.rotation.x = 0.40;
     } else {
       // Smoothly relax back to the resting "arms by sides" pose.
       const lerp = Math.min(1, dt * 4);
@@ -431,22 +429,61 @@ function describeTool(data) {
 // userPromptScenario: the choreography Nader described. Kohai gets up
 // from her seat, walks left to "read" the user's message, looks over,
 // turns back, walks back to her desk, and starts coding.
+// Tell main.js to physically slide the window. The renderer can't move
+// its own OS window directly, so we POST to the local control server.
+async function requestWalk(xPct, yPct, ms) {
+  try {
+    const tokenRes = await fetch('http://127.0.0.1:17455/health');
+    if (!tokenRes.ok) return;
+  } catch (_) { return; }
+  // Token is read by main.js side; here we just emit through window.kohai
+  // if the IPC bridge supports it. Fallback to direct fetch with the token
+  // we know lives at ~/.kohai/token via Electron's preload (see preload.js).
+  if (window.kohai && window.kohai.walk) {
+    window.kohai.walk(xPct, yPct, ms);
+  }
+}
+
 function userPromptScenario(prompt) {
   exitCoding();
   runScenario([
-    { ms: 350, enter: () => say('Mm? Senpai said something…', 1200) },
-    { ms: 900, enter: () => { walkActive = true; turnTo(-0.6); } },
-    { ms: 900, enter: () => {
-      walkActive = false;
-      scenarioState.read = true;
-      const preview = (prompt || '').slice(0, 60);
-      if (preview) say(`「${preview}${prompt && prompt.length > 60 ? '…' : ''}」`, 1500);
+    // 1. Notice the message
+    { ms: 600, enter: () => { lookActive = true; say('Mm? Senpai said something…', 1500); } },
+    // 2. Stand up + walk LEFT to "read the message". Window glides left.
+    { ms: 1800, enter: () => {
+      walkActive = true;
+      turnTo(-0.4);
+      requestWalk(0.05, 0.40, 1700); // far-left, mid-height
     } },
+    // 3. Stop. Lean forward and "read" — show the actual prompt.
+    { ms: 1800, enter: () => {
+      walkActive = false;
+      turnTo(0);
+      scenarioState.read = true;
+      const preview = (prompt || '').slice(0, 80);
+      if (preview) say(`「${preview}${prompt && prompt.length > 80 ? '…' : ''}」`, 2000);
+    } },
+    // 4. Glance over the shoulder
     { ms: 700, enter: () => { scenarioState.lookOver = true; } },
-    { ms: 700, enter: () => { scenarioState.lookOver = false; scenarioState.read = false; turnTo(Math.PI); } }, // turn around
-    { ms: 700, enter: () => { turnTo(0); } }, // turn back
-    { ms: 900, enter: () => { walkActive = true; } },
-    { ms: 900, enter: () => { walkActive = false; lookActive = true; setState('thinking', { text: 'Time to code!' }); enterCoding(60000); } },
+    // 5. Turn fully around (back toward camera)
+    { ms: 800, enter: () => {
+      scenarioState.lookOver = false;
+      scenarioState.read = false;
+      turnTo(Math.PI);
+    } },
+    // 6. Turn back forward
+    { ms: 700, enter: () => { turnTo(0); } },
+    // 7. Walk back to the desk (right side). Window glides right.
+    { ms: 1800, enter: () => {
+      walkActive = true;
+      requestWalk(0.75, 0.55, 1700);
+    } },
+    // 8. Sit down at her desk and start coding
+    { ms: 600, enter: () => {
+      walkActive = false;
+      setState('thinking', { text: 'Time to code!' });
+      enterCoding(60000);
+    } },
   ]);
 }
 

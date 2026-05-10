@@ -89,17 +89,26 @@ function clampToDisplay(x, y, w, h) {
 
 let restingPosition = null; // remembers where to drift back to
 
-// macOS animates setBounds natively — much smoother than per-frame setPosition
-// on transparent always-on-top windows.
-function smoothMoveTo(targetX, targetY) {
+// Manual per-frame tween — macOS's native setBounds animate flag misbehaves
+// on transparent always-on-top windows (teleports), so we drive position
+// updates ourselves at ~30fps with ease-out cubic.
+let _moveAnim = null;
+function smoothMoveTo(targetX, targetY, durationMs = 700) {
   if (!win || win.isDestroyed()) return;
+  if (_moveAnim) { clearInterval(_moveAnim); _moveAnim = null; }
+  const [startX, startY] = win.getPosition();
   const [w, h] = win.getSize();
-  const { x, y } = clampToDisplay(targetX, targetY, w, h);
-  try {
-    win.setBounds({ x, y, width: w, height: h }, true);
-  } catch (_) {
-    win.setPosition(x, y);
-  }
+  const { x: tx, y: ty } = clampToDisplay(targetX, targetY, w, h);
+  const start = Date.now();
+  _moveAnim = setInterval(() => {
+    if (!win || win.isDestroyed()) { clearInterval(_moveAnim); _moveAnim = null; return; }
+    const t = Math.min(1, (Date.now() - start) / durationMs);
+    const e = 1 - Math.pow(1 - t, 3);
+    const cx = Math.round(startX + (tx - startX) * e);
+    const cy = Math.round(startY + (ty - startY) * e);
+    try { win.setPosition(cx, cy); } catch (_) {}
+    if (t >= 1) { clearInterval(_moveAnim); _moveAnim = null; }
+  }, 33);
 }
 
 function moveToWorkPosition() {
@@ -111,13 +120,25 @@ function moveToWorkPosition() {
   // Slide toward bottom-center — like she walked over to peek at the work.
   const targetX = dx + Math.round((dw - w) / 2);
   const targetY = dy + dh - h - 24;
-  smoothMoveTo(targetX, targetY);
+  smoothMoveTo(targetX, targetY, 1200);
 }
 
 function moveToRest() {
   if (!restingPosition) return;
-  smoothMoveTo(restingPosition.x, restingPosition.y);
+  smoothMoveTo(restingPosition.x, restingPosition.y, 1200);
   restingPosition = null;
+}
+
+// Scenario-driven window walk: the renderer asks us to slide the window
+// to (x_offset_pct, y_offset_pct) of the current display work area over
+// `ms` milliseconds. Used by the userPromptScenario walk-out / walk-back.
+function walkWindowTo(xPct, yPct, ms) {
+  if (!win || win.isDestroyed()) return;
+  const { x: dx, y: dy, width: dw, height: dh } = getDisplayWorkArea();
+  const [w, h] = win.getSize();
+  const targetX = dx + Math.round((dw - w) * xPct);
+  const targetY = dy + Math.round((dh - h) * yPct);
+  smoothMoveTo(targetX, targetY, ms || 1500);
 }
 
 function createWindow() {
@@ -184,6 +205,11 @@ function applyControl(cmd, payload) {
     return;
   }
 
+  if (cmd === 'walk') {
+    walkWindowTo(payload.x, payload.y, payload.ms || 1500);
+    return;
+  }
+
   if (cmd === 'say' || cmd === 'motion') {
     lastCustomSayAt = Date.now();
   }
@@ -210,6 +236,7 @@ function shouldSkipPostToolReaction() {
 }
 
 app.whenReady().then(() => {
+  ipcMain.on('kohai:walk', (_evt, { x, y, ms }) => walkWindowTo(x, y, ms));
   startEngine();
   createWindow();
   startServer({

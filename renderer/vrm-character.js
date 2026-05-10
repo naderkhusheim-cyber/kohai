@@ -185,6 +185,21 @@ loader.load('../assets/vrm/character.vrm', (gltf) => {
   applyIdlePose();
   mixer = new THREE.AnimationMixer(vrm.scene);
 
+  // Eye tracking — she keeps eye contact with the camera by default.
+  // Pointing the lookAt target at the camera makes her feel "present"
+  // exactly like a VTuber on stream.
+  if (vrm.lookAt) {
+    vrm.lookAt.target = camera;
+    vrm.lookAt.autoUpdate = true;
+  }
+
+  // Auto-blink — subtle natural blinks every 3–6 s. Critical for
+  // not feeling like a corpse.
+  scheduleNextBlink();
+
+  // Subtle breathing — chest scale on a slow sine wave.
+  // (Driven inside the animate loop below.)
+
   // Try to load any .vrma animations the user has dropped in.
   // Add more names here (or edit this list at runtime) to extend.
   const animationLibrary = ['idle', 'wave', 'celebrate', 'thinking', 'walking', 'bow', 'sit', 'type'];
@@ -236,6 +251,79 @@ let lookActive = true;
 // — Body rotation: smoothly turn the character toward a y-rotation target.
 let bodyTargetY = 0; // facing camera by default for VRM 1.0
 function turnTo(yRadians) { bodyTargetY = yRadians; }
+
+// — VTuber face layer: blink, expressions, lip-sync —
+//
+// VRM 1.0 exposes an ExpressionManager with named expressions like
+// 'happy', 'sad', 'relaxed', 'surprised', 'angry', 'blink', and the
+// visemes 'aa', 'ih', 'ou', 'ee', 'oh'. We blend between them based on
+// state (mood-driven), schedule random blinks, and drive 'aa' from the
+// VOICEVOX audio amplitude in real time.
+
+let blinkValue = 0;
+let blinkPhase = 'idle'; // 'idle' | 'closing' | 'opening'
+let blinkStartedAt = 0;
+let nextBlinkAt = 0;
+
+function scheduleNextBlink() {
+  nextBlinkAt = performance.now() + 2500 + Math.random() * 3500; // 2.5–6 s
+}
+
+function tickBlink(now) {
+  if (!vrm?.expressionManager) return;
+  if (blinkPhase === 'idle' && now >= nextBlinkAt) {
+    blinkPhase = 'closing';
+    blinkStartedAt = now;
+  }
+  if (blinkPhase === 'closing') {
+    const t = Math.min(1, (now - blinkStartedAt) / 80); // 80 ms close
+    blinkValue = t;
+    if (t >= 1) { blinkPhase = 'opening'; blinkStartedAt = now; }
+  } else if (blinkPhase === 'opening') {
+    const t = Math.min(1, (now - blinkStartedAt) / 120); // 120 ms open
+    blinkValue = 1 - t;
+    if (t >= 1) { blinkPhase = 'idle'; scheduleNextBlink(); }
+  }
+  vrm.expressionManager.setValue('blink', blinkValue);
+}
+
+// Mood → blendshape weight. setState() fades the active expression.
+const MOOD_EXPRESSION = {
+  idle:     { neutral: 0.7 },
+  thinking: { relaxed: 0.5 },
+  happy:    { happy:   0.85 },
+  error:    { sad:     0.7 },
+  sleepy:   { relaxed: 0.9 },
+  panic:    { surprised: 0.9 },
+};
+
+const expressionTargets = { happy: 0, angry: 0, sad: 0, relaxed: 0, surprised: 0, neutral: 0 };
+function setMoodExpression(state) {
+  const target = MOOD_EXPRESSION[state] || MOOD_EXPRESSION.idle;
+  for (const k of Object.keys(expressionTargets)) {
+    expressionTargets[k] = target[k] || 0;
+  }
+}
+
+function tickExpressions(dt) {
+  if (!vrm?.expressionManager) return;
+  for (const [name, target] of Object.entries(expressionTargets)) {
+    const cur = vrm.expressionManager.getValue(name) || 0;
+    const next = cur + (target - cur) * Math.min(1, dt * 3);
+    if (Math.abs(next - cur) > 0.001) vrm.expressionManager.setValue(name, next);
+  }
+}
+
+// Lip-sync — reads instantaneous VOICEVOX audio amplitude (exposed by
+// voicevox.js as window.kohaiVoicevox.lipsyncLevel) and drives the 'aa'
+// viseme accordingly.
+function tickLipsync() {
+  if (!vrm?.expressionManager) return;
+  const level = (window.kohaiVoicevox && typeof window.kohaiVoicevox.lipsyncLevel === 'function')
+    ? window.kohaiVoicevox.lipsyncLevel()
+    : 0;
+  vrm.expressionManager.setValue('aa', level);
+}
 
 // — Pose target system: map any bone name to a rotation, and the animate
 // loop will lerp the current rotation toward the target each frame.
@@ -540,6 +628,11 @@ function animate() {
     // Drive scenario state machine.
     tickScenario(performance.now(), dt);
 
+    // VTuber face layer.
+    tickBlink(performance.now());
+    tickExpressions(dt);
+    tickLipsync();
+
     // Apply pose targets last — these are explicit overrides from the
     // user (via /control/pose, MCP, or scenario steps) and always win.
     for (const [id, target] of poseTargets) {
@@ -604,9 +697,10 @@ function pickLine(state) {
 }
 
 function setState(state, opts = {}) {
-  // VRM state mapping is mostly cosmetic — head/body angle hints.
+  // Body angle hints + facial expression matching the mood.
   if (state === 'sleepy' && headBone) headBone.rotation.x = 0.5;
   if (state === 'panic') turnTo(Math.sin(performance.now() / 100) * 0.3);
+  setMoodExpression(state);
   if (!opts.silent) {
     if (opts.text) say(opts.text);
     else say(pickLine(state));

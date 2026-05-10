@@ -12,9 +12,12 @@
     "install-command": "node scripts/install-command.js"
   },
   "dependencies": {
+    "@pixiv/three-vrm": "^3.5.2",
+    "@pixiv/three-vrm-animation": "^3.5.2",
     "express": "^4.21.0",
     "pixi-live2d-display": "^0.4.0",
-    "pixi.js": "^6.5.10"
+    "pixi.js": "^6.5.10",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "electron": "^32.0.0",
@@ -42,7 +45,9 @@
       {
         "from": "resources/voicevox-engine",
         "to": "voicevox-engine",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   }

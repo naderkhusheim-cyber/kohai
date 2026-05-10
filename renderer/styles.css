@@ -107,10 +107,10 @@ html, body {
 /* Laptop overlay — appears when Kohai is "coding". */
 .laptop {
   position: absolute;
-  bottom: 18%;
+  bottom: 38%;
   left: 50%;
   transform: translateX(-50%) translateY(20px) scale(0.6);
-  width: 55%;
+  width: 60%;
   max-width: 220px;
   pointer-events: none;
   opacity: 0;

@@ -142,7 +142,14 @@ function createWindow() {
   });
 
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  win.loadFile('renderer/index.html');
+  // Pick renderer based on ~/.kohai/config.json: { "renderer": "vrm" | "live2d" }
+  const cfg = (() => {
+    try {
+      return JSON.parse(fs.readFileSync(path.join(require('os').homedir(), '.kohai', 'config.json'), 'utf8'));
+    } catch (_) { return {}; }
+  })();
+  const useVRM = cfg.renderer === 'vrm';
+  win.loadFile(useVRM ? 'renderer/vrm.html' : 'renderer/index.html');
 }
 
 function applyControl(cmd, payload) {

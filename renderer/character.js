@@ -157,6 +157,10 @@ let typingStart = 0;
 
 function startTypingAnim() {
   if (!app || !model || typingTickerFn) return;
+  // Stop the active motion — otherwise its keyframes overwrite our params
+  // every frame and her arms snap back to the idle pose.
+  try { model.internalModel?.motionManager?.stopAllMotions?.(); } catch (_) {}
+
   typingStart = performance.now();
   typingTickerFn = () => {
     if (!model?.internalModel?.coreModel) return;
@@ -167,7 +171,7 @@ function startTypingAnim() {
       try { core.setParameterValueById(p.id, value); } catch (_) {}
     }
   };
-  // Run AFTER the default-priority Live2D motion update so our values win.
+  // Run AFTER the default-priority Live2D update so our values win.
   const priority = (window.PIXI && PIXI.UPDATE_PRIORITY && PIXI.UPDATE_PRIORITY.LOW) || -25;
   app.ticker.add(typingTickerFn, undefined, priority);
 }
@@ -176,6 +180,10 @@ function stopTypingAnim() {
   if (!typingTickerFn || !app) return;
   app.ticker.remove(typingTickerFn);
   typingTickerFn = null;
+  // Re-enter idle motion so she keeps breathing.
+  if (model) {
+    try { model.motion('Idle', 0); } catch (_) {}
+  }
 }
 
 function enterCoding(durationMs = 20000) {

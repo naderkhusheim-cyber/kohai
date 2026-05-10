@@ -7,8 +7,9 @@
     "start": "electron .",
     "prepare-engine": "node scripts/prepare-engine.js",
     "build": "npm run prepare-engine && electron-builder --mac dmg",
-    "install-hooks": "node hooks/install.js",
-    "uninstall-hooks": "node hooks/uninstall.js",
+    "setup-claude": "node scripts/setup-claude.js",
+    "install-hooks": "node plugins/kohai/hooks/install.js",
+    "uninstall-hooks": "node plugins/kohai/hooks/uninstall.js",
     "install-command": "node scripts/install-command.js"
   },
   "dependencies": {

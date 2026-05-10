@@ -4,33 +4,29 @@ Your anime kohai who lives next to your terminal and reacts to your Claude Code 
 
 She thinks when Claude thinks. Cheers when tools succeed. Pouts on errors. Sleeps when you wander off. Panics when your context window fills up. She knows the file you're editing, speaks aloud through VOICEVOX, and can be addressed directly — just say her name.
 
-## Install (as a Claude Code plugin)
+## Install (one step)
 
-In any Claude Code session:
-
-```
-/plugin marketplace add naderkhusheim-cyber/kohai
-/plugin install kohai@kohai-marketplace
-```
-
-That registers the slash commands (`/kohai-say`, `/kohai-motion`, `/kohai-size`, `/kohai-position`, `/kohai-hide`, `/kohai-show`), wires the lifecycle hooks, and registers the `kohai_*` MCP tools. The first time you start a Claude Code session after installing, Kohai auto-launches her Electron window.
-
-## Install (standalone, from source)
+Just open Kohai. The first time the app launches it **auto-installs itself into Claude Code** — slash commands, lifecycle hooks, and the MCP server all wire up to `~/.claude/` silently. No marketplace dance.
 
 ```bash
 git clone https://github.com/naderkhusheim-cyber/kohai.git ~/kohai
 cd ~/kohai
 npm install
-npm run start              # launch Kohai's floating window
-npm run install-hooks      # wire to ~/.claude/settings.json
-npm run install-command    # copy slash commands into ~/.claude/commands/
+npm start                  # everything else happens automatically
 ```
 
-To package as a `.dmg`:
+After this, every new Claude Code session has:
+- `/kohai-say`, `/kohai-motion`, `/kohai-size`, `/kohai-position`, `/kohai-hide`, `/kohai-show`, `/kohai-turn`, `/kohai-pose`, `/kohai-play` slash commands.
+- All 9 lifecycle hooks (`SessionStart`, `PreToolUse`, etc.) forwarding events to her.
+- 13 native MCP tools (`kohai_say`, `kohai_pose`, `kohai_choreograph`, `kohai_walk`, `kohai_turn`, `kohai_read_file`, `kohai_edit_file`, …) so Claude can drive her body during work.
+
+To package as a `.dmg` for end users:
 
 ```bash
-npm run build              # bundles the VOICEVOX engine + builds Kohai.dmg (~2.5 GB)
+npm run build              # bundles VOICEVOX engine + Kohai.app (~2.5 GB)
 ```
+
+The DMG is one drag-and-drop install. On first open Kohai self-installs into Claude Code; from then on every session has her.
 
 To uninstall the Claude Code hooks:
 

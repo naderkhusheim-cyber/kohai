@@ -236,6 +236,11 @@ function shouldSkipPostToolReaction() {
 }
 
 app.whenReady().then(() => {
+  // Self-install: wire up Claude Code hooks, slash commands, and MCP
+  // server every launch (idempotent). User just opens Kohai once and
+  // every Claude Code session afterward picks up the integration.
+  try { require('./scripts/setup-claude').main(); } catch (e) { console.warn('[kohai] setup-claude failed:', e.message); }
+
   ipcMain.on('kohai:walk', (_evt, { x, y, ms }) => walkWindowTo(x, y, ms));
   startEngine();
   createWindow();

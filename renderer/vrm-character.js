@@ -182,6 +182,39 @@ let lookActive = true;
 let bodyTargetY = 0; // facing camera by default for VRM 1.0
 function turnTo(yRadians) { bodyTargetY = yRadians; }
 
+// — Pose target system: map any bone name to a rotation, and the animate
+// loop will lerp the current rotation toward the target each frame.
+// Anyone can drive Kohai's body just by POSTing bone rotations.
+const poseTargets = new Map(); // boneId → { rx?, ry?, rz?, lerp? }
+function getBone(name) {
+  switch (name) {
+    case 'head':           return headBone;
+    case 'neck':           return neckBone;
+    case 'spine':          return spine;
+    case 'hips':           return hips;
+    case 'leftUpperArm':   return leftUpperArm;
+    case 'rightUpperArm':  return rightUpperArm;
+    case 'leftLowerArm':   return leftLowerArm;
+    case 'rightLowerArm':  return rightLowerArm;
+    case 'leftHand':       return leftHand;
+    case 'rightHand':      return rightHand;
+    case 'leftUpperLeg':   return leftUpperLeg;
+    case 'rightUpperLeg':  return rightUpperLeg;
+    case 'leftLowerLeg':   return leftLowerLeg;
+    case 'rightLowerLeg':  return rightLowerLeg;
+    default: return null;
+  }
+}
+function setPoseTarget(boneId, target) {
+  if (!getBone(boneId)) return;
+  if (target == null) { poseTargets.delete(boneId); return; }
+  poseTargets.set(boneId, target);
+}
+function clearPoseTargets(boneIds) {
+  if (!boneIds || !boneIds.length) { poseTargets.clear(); return; }
+  for (const id of boneIds) poseTargets.delete(id);
+}
+
 // — Coding mode: arms held forward over a virtual keyboard, fingers tap.
 let coding = false;
 function enterCoding() {
@@ -345,6 +378,17 @@ function animate() {
 
     // Drive scenario state machine.
     tickScenario(performance.now(), dt);
+
+    // Apply pose targets last — these are explicit overrides from the
+    // user (via /control/pose, MCP, or scenario steps) and always win.
+    for (const [id, target] of poseTargets) {
+      const bone = getBone(id);
+      if (!bone) continue;
+      const lerp = Math.min(1, dt * (target.lerp || 6));
+      if (typeof target.rx === 'number') bone.rotation.x += (target.rx - bone.rotation.x) * lerp;
+      if (typeof target.ry === 'number') bone.rotation.y += (target.ry - bone.rotation.y) * lerp;
+      if (typeof target.rz === 'number') bone.rotation.z += (target.rz - bone.rotation.z) * lerp;
+    }
 
     if (mixer) mixer.update(dt);
     vrm.update(dt);
@@ -543,6 +587,15 @@ const HOOK_HANDLERS = {
 const CONTROL_HANDLERS = {
   say:    ({ text }) => say(text),
   motion: ({ state, text }) => setState(state, text ? { text } : {}),
+  turn:   ({ degrees, radians }) => {
+    const rad = typeof radians === 'number' ? radians : (typeof degrees === 'number' ? degrees * Math.PI / 180 : 0);
+    turnTo(rad);
+  },
+  pose:   ({ bones }) => {
+    if (!bones || typeof bones !== 'object') return;
+    for (const [name, rot] of Object.entries(bones)) setPoseTarget(name, rot);
+  },
+  clear_pose: ({ bones }) => clearPoseTargets(bones),
 };
 
 window.kohai.onEvent(({ type, data }) => {

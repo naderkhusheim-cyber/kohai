@@ -117,6 +117,58 @@ const TOOLS = [
     handler: async () => kohaiPost('show'),
   },
   {
+    name: 'kohai_turn',
+    description: 'Rotate Kohai\'s body. 0 = facing camera, 90 = her right, 180 = back, -90 = her left.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        degrees: { type: 'number', description: 'Target Y rotation in degrees.' },
+      },
+      required: ['degrees'],
+    },
+    handler: async ({ degrees }) => kohaiPost('turn', { degrees }),
+  },
+  {
+    name: 'kohai_pose',
+    description: 'Pose Kohai by setting bone rotations directly. Bones include head, neck, spine, hips, leftUpperArm, rightUpperArm, leftLowerArm, rightLowerArm, leftHand, rightHand, leftUpperLeg, rightUpperLeg, leftLowerLeg, rightLowerLeg. Each takes optional rx, ry, rz (radians).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bones: {
+          type: 'object',
+          description: 'Map of bone name → { rx?, ry?, rz?, lerp? }. e.g. {"head":{"rx":0.4},"leftUpperArm":{"rz":-0.5}}.',
+        },
+      },
+      required: ['bones'],
+    },
+    handler: async ({ bones }) => kohaiPost('pose', { bones }),
+  },
+  {
+    name: 'kohai_clear_pose',
+    description: 'Release one or more pose bone targets so they return to their natural animation. Pass an empty object {} to clear all.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bones: { type: 'array', items: { type: 'string' }, description: 'Bone names to release. Omit or empty array to clear all.' },
+      },
+    },
+    handler: async ({ bones }) => kohaiPost('clear_pose', bones ? { bones } : {}),
+  },
+  {
+    name: 'kohai_walk',
+    description: 'Slide Kohai\'s window across the desktop. xPct/yPct = 0..1 fraction of the work area; ms = animation duration.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        xPct: { type: 'number', minimum: 0, maximum: 1 },
+        yPct: { type: 'number', minimum: 0, maximum: 1 },
+        ms:   { type: 'number', description: 'Duration in milliseconds. Default 1500.' },
+      },
+      required: ['xPct', 'yPct'],
+    },
+    handler: async ({ xPct, yPct, ms }) => kohaiPost('walk', { x: xPct, y: yPct, ms: ms || 1500 }),
+  },
+  {
     name: 'kohai_read_file',
     description: 'Have Kohai read a file aloud (figuratively) and return its contents. Use this when the user has asked Kohai directly to read something.',
     inputSchema: {

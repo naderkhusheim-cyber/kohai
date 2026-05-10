@@ -1,0 +1,18 @@
+node_modules/
+dist/
+build/
+*.dmg
+*.zip
+.DS_Store
+.kohai-backup
+assets/audio/*.mp3
+assets/audio/*.wav
+assets/live2d/Hiyori/
+.env
+
+# Bundled VOICEVOX engine — copied in by scripts/prepare-engine.js (~2 GB).
+# Generated at build time, never committed.
+resources/voicevox-engine/
+
+# Local logs
+*.log

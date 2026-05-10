@@ -1,0 +1,49 @@
+{
+  "name": "kohai",
+  "version": "0.1.0",
+  "description": "Your anime kohai who lives next to your terminal and reacts to your Claude Code session.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "prepare-engine": "node scripts/prepare-engine.js",
+    "build": "npm run prepare-engine && electron-builder --mac dmg",
+    "install-hooks": "node hooks/install.js",
+    "uninstall-hooks": "node hooks/uninstall.js",
+    "install-command": "node scripts/install-command.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "pixi-live2d-display": "^0.4.0",
+    "pixi.js": "^6.5.10"
+  },
+  "devDependencies": {
+    "electron": "^32.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.kohai.app",
+    "productName": "Kohai",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": "dmg"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "prompt-reactor.js",
+      "renderer/**/*",
+      "hooks/**/*",
+      "assets/**/*",
+      "scripts/**/*",
+      "slash-commands/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/voicevox-engine",
+        "to": "voicevox-engine",
+        "filter": ["**/*"]
+      }
+    ]
+  }
+}

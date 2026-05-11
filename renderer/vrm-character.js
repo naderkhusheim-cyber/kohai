@@ -164,6 +164,29 @@ const PROCEDURAL_ANIMS = {
     container.dataset.room = 'livingroom';
     say('Welcome to my house, senpai!', 2500);
   },
+  // "Touch the code": she turns 180° (back to the user, facing the
+  // terminal text behind her) and reaches her right arm up + forward
+  // as if pointing at a line of code on the screen.
+  // Window should be 'fullbody' size so the full reach is visible.
+  touch: () => {
+    turnTo(Math.PI);             // back-to-camera
+    setPoseTarget('rightUpperArm', { rx: -2.10, rz: 0.30, lerp: 6 });
+    setPoseTarget('rightLowerArm', { ry: -0.45, lerp: 6 });
+    setPoseTarget('rightHand',     { rx: -0.20, lerp: 8 });
+    setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 6 });
+    setPoseTarget('spine',         { rx: -0.10, lerp: 6 });
+    setPoseTarget('head',          { rx: -0.15, ry: 0.10, lerp: 6 });
+    say('Mm? Senpai, what does this line do?', 3000);
+  },
+  // Variant: looks at code over her shoulder (gentle, less dramatic).
+  peek_code: () => {
+    setPoseTarget('rightUpperArm', { rx: -1.20, rz: 0.50, lerp: 6 });
+    setPoseTarget('rightLowerArm', { ry: -1.20, lerp: 6 });
+    setPoseTarget('rightHand',     { rx: -0.30, lerp: 8 });
+    setPoseTarget('spine',         { rx: -0.18, ry: 0.20, lerp: 6 });
+    setPoseTarget('head',          { rx: 0.15, ry: 0.35, lerp: 6 });
+    say('Ehehe, let me see senpai\'s code…', 3000);
+  },
   wave: () => {
     setPoseTarget('rightUpperArm', { rx: -1.6, rz: 0.6, lerp: 8 });
     setPoseTarget('rightLowerArm', { ry: -1.0, lerp: 8 });

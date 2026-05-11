@@ -52,10 +52,13 @@ function stopEngine() {
 }
 
 const SIZES = {
-  small:  { w: 240, h: 320 },
-  medium: { w: 320, h: 400 },
-  large:  { w: 480, h: 600 },
-  xl:     { w: 640, h: 800 },
+  small:    { w: 240, h: 320 },
+  medium:   { w: 320, h: 400 },
+  large:    { w: 480, h: 600 },
+  xl:       { w: 640, h: 800 },
+  // Full-body — narrow + tall so her whole standing figure fits with
+  // room for an extended arm reaching toward the terminal behind her.
+  fullbody: { w: 420, h: 960 },
 };
 
 function getDisplayWorkArea() {

@@ -170,12 +170,14 @@ const PROCEDURAL_ANIMS = {
   // Window should be 'fullbody' size so the full reach is visible.
   touch: () => {
     turnTo(Math.PI);             // back-to-camera
-    setPoseTarget('rightUpperArm', { rx: -2.10, rz: 0.30, lerp: 6 });
+    // -1.55 (just shy of straight up); -2.10 over-rotates past vertical
+    // and the arm comes BACK DOWN behind her, which read as "arm at side."
+    setPoseTarget('rightUpperArm', { rx: -1.55, rz: 0.20, lerp: 6 });
     setPoseTarget('rightLowerArm', { ry: -0.45, lerp: 6 });
     setPoseTarget('rightHand',     { rx: -0.20, lerp: 8 });
     setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 6 });
-    setPoseTarget('spine',         { rx: -0.10, lerp: 6 });
-    setPoseTarget('head',          { rx: -0.15, ry: 0.10, lerp: 6 });
+    setPoseTarget('spine',         { rx: -0.05, lerp: 6 });
+    setPoseTarget('head',          { rx: -0.05, ry: 0.10, lerp: 6 });
     say('Mm? Senpai, what does this line do?', 3000);
   },
   // "Coding at her desk" — full Flow-reference scene: chair appears

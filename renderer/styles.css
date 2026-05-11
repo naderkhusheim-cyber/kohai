@@ -165,7 +165,7 @@ html, body {
 .lamp    { right: 4%; bottom: 12%; width: 18%; transform: translateY(20px); }
 .bed     { left: 50%; bottom: 11%; width: 70%; transform: translateX(-50%) translateY(20px); }
 .plant   { right: 24%; bottom: 12%; width: 14%; transform: translateY(20px); }
-.chair   { left: 50%; bottom: 0%;  width: 70%; transform: translateX(-50%) translateY(20px); z-index: -1; }
+.chair   { left: 50%; bottom: 0%;  width: 78%; transform: translateX(-50%) translateY(20px); }
 
 /* Reveal floor whenever the room is "active" — i.e. she's in any
    home-mode state (sit / sleep / coding). */

@@ -178,6 +178,25 @@ const PROCEDURAL_ANIMS = {
     setPoseTarget('head',          { rx: -0.15, ry: 0.10, lerp: 6 });
     say('Mm? Senpai, what does this line do?', 3000);
   },
+  // "Coding at her desk" — full Flow-reference scene: chair appears
+  // behind her, she sits down, laptop overlay slides to her lap, and
+  // her typing arms cycle. Side-profile rotation makes it cinematic.
+  code_at_desk: () => {
+    container.dataset.room = 'workspace';
+    // Sit pose so she's seated on the chair.
+    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
+    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
+    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
+    setPoseTarget('spine',         { rx: -0.10, lerp: 4 }); // slight hunch over laptop
+    hipsTargetY = -0.55;
+    // Light forward look (head down at the screen).
+    setPoseTarget('head', { rx: 0.30, lerp: 5 });
+    // Coding mode drives the typing arms + the laptop overlay; the
+    // [data-room="workspace"] CSS rules move the laptop down to lap level.
+    enterCoding(60000);
+    say('Coding time, senpai~', 2500);
+  },
   // Variant: looks at code over her shoulder (gentle, less dramatic).
   peek_code: () => {
     setPoseTarget('rightUpperArm', { rx: -1.20, rz: 0.50, lerp: 6 });

@@ -165,6 +165,7 @@ html, body {
 .lamp    { right: 4%; bottom: 12%; width: 18%; transform: translateY(20px); }
 .bed     { left: 50%; bottom: 11%; width: 70%; transform: translateX(-50%) translateY(20px); }
 .plant   { right: 24%; bottom: 12%; width: 14%; transform: translateY(20px); }
+.chair   { left: 50%; bottom: 0%;  width: 70%; transform: translateX(-50%) translateY(20px); z-index: -1; }
 
 /* Reveal floor whenever the room is "active" — i.e. she's in any
    home-mode state (sit / sleep / coding). */
@@ -187,6 +188,19 @@ html, body {
 .kohai-container[data-room="bedroom"] .lamp {
   opacity: 1;
   transform: translateY(0);
+}
+.kohai-container[data-room="workspace"] .chair {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.kohai-container[data-room="workspace"] .lamp {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* Laptop sits on her lap in workspace mode — lower than the default position. */
+.kohai-container[data-room="workspace"] .laptop {
+  bottom: 22%;
+  width: 58%;
 }
 .laptop svg { width: 100%; height: auto; display: block; }
 

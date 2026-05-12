@@ -193,6 +193,67 @@ behaviors (notice user's open file, comment on it) — not for posing.
 - `kohai_position` — move her window to a screen corner
 - `kohai_show` / `kohai_hide` — toggle visibility
 
+## Worked example: drink water (the full sequence)
+
+When she wants/needs water (idle trigger or user-implied), DO NOT just
+float a bottle near her hand. Compose the full lifecycle:
+
+```text
+1. Spawn bottle FIXED on the ground beside her:
+   kohai_asset { name: 'water-bottle', x: '75%', y: '70%', width: '7%' }
+
+2. Reach down to pick it up — lean spine, extend right arm down/forward:
+   kohai_pose {
+     spine:        { rx: -0.3, lerp: 25 },
+     rightUpperArm:{ rx: -0.9, rz: 0.8, lerp: 25 },
+     rightLowerArm:{ rx: -0.5, ry: -0.6, lerp: 25 },
+   }
+   kohai_screenshot — confirm hand near bottle position.
+
+3. ATTACH bottle to her hand (becomes "grabbed"):
+   kohai_asset { name: 'water-bottle', attachTo: 'rightHand',
+                 width: '5%', offsetY: -8 }
+
+4. Stand up + raise bottle toward her face:
+   kohai_pose {
+     spine:         { rx: 0, lerp: 25 },
+     rightUpperArm: { rx: -2.0, rz: 0.7, lerp: 25 },
+     rightLowerArm: { rx: -0.2, ry: -2.0, lerp: 25 },
+     rightHand:     { rx: -0.7, lerp: 25 },
+     head:          { rx: -0.3, lerp: 25 },
+     neck:          { rx: -0.2, lerp: 25 },
+   }
+
+5. Tilt the bottle to "drink" — update asset with rotation:
+   kohai_asset { name: 'water-bottle', attachTo: 'rightHand',
+                 width: '5%', offsetY: -8, tilt: -1.4 }
+   kohai_say { text: 'gulp gulp~' }
+   kohai_screenshot — confirm bottle is tipped at her mouth.
+
+6. Bring bottle down, untilt:
+   kohai_asset { name: 'water-bottle', attachTo: 'rightHand',
+                 width: '5%', offsetY: -8, tilt: 0 }
+   kohai_pose { rightUpperArm: { rx: -0.3, rz: 1.2, lerp: 25 },
+                rightLowerArm: { rx: -0.4, ry: -0.6, lerp: 25 },
+                head: { rx: 0, lerp: 25 } }
+
+7. Release bottle back to ground (DETACH + reposition):
+   kohai_asset { name: 'water-bottle', x: '75%', y: '70%', width: '7%' }
+   kohai_pose { rightUpperArm: null, rightLowerArm: null,
+                rightHand: null, head: null, neck: null }
+
+8. kohai_say one short happy line: "daijoubu~" / "I'm refreshed~"
+```
+
+**Critical rules for held objects** (bottle, mug, pointer, snack, plush):
+- The asset MUST be `attachTo: '<bone>'` while she holds it — not just
+  near her hand. `attachTo` makes it follow her arm every frame.
+- When she lets go, REMOVE the attachTo by setting fixed `x/y` instead.
+- For a tipped-up motion (drinking, tipping a cup), set `tilt` to a
+  negative radian value (-1.2 to -1.6 for a near-vertical pour).
+- Always screenshot after each phase; the lerp may not land where you
+  expect from the bone numbers alone.
+
 ## Mandatory workflow
 
 Every scene you build follows this loop:

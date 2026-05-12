@@ -455,10 +455,13 @@ function stopTerminalPin() {
 }
 
 function loadPinConfig() {
-  // Default: enabled in fill mode. She OWNS the terminal — no opt-in,
-  // because the cropping problem is too bad without it.
+  // Default: corner-pin at the original small size. User explicitly said
+  // fill-mode is "ugly and disturbing" — she should stay compact and
+  // tucked in a corner so she doesn't cover the chat.
   pinConfig.enabled = true;
-  pinConfig.mode = 'fill';
+  pinConfig.mode = 'corner';
+  pinConfig.corner = 'bottom-right';
+  pinConfig.offset = 16;
   try {
     const cfgPath = path.join(require('os').homedir(), '.kohai', 'config.json');
     const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));

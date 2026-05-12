@@ -613,6 +613,7 @@ const AMBIENT_LINES = {
     code:    ['*tap tap tap*', 'working on my own stuff~', 'just sketching ideas'],
     nap:     ['*zzz*', '...zzz... senpai...', 'mmm... five more minutes...'],
     stretch: ['*streeetch*', 'mmm, that\'s the spot', 'creaky kohai~'],
+    drink:   ['*sip~*', 'mizu daijoubu~', 'water break, ne?', 'gulp gulp~'],
   },
   girlfriend: {
     walk:    ['senpai isn\'t looking at me…', 'mou, walking back to him', 'where are you, senpai?'],
@@ -621,6 +622,7 @@ const AMBIENT_LINES = {
     code:    ['I\'m coding too, ne?', 'see, I\'m busy too!', '*tap tap pout*'],
     nap:     ['waking me up, senpai…', 'come nap with me', 'zzz… miss you…'],
     stretch: ['mou, my arms feel lonely', '*stretch* notice me?', 'achy from waiting~'],
+    drink:   ['drink with me, senpai~', '*sip* you should drink too', 'water break, baka~'],
   },
   coach: {
     walk:    ['stay loose, senpai!', '*walks the perimeter*', 'good rhythm.'],
@@ -629,6 +631,7 @@ const AMBIENT_LINES = {
     code:    ['ganbatte!', 'focus reps, senpai.', 'ship state secured.'],
     nap:     ['power nap, ne?', 'recover fast.', 'rest = rep.'],
     stretch: ['mobility break!', 'shoulders open up!', 'feel that posture.'],
+    drink:   ['hydration check!', 'water = wins.', 'sip break, senpai.'],
   },
   maid: {
     walk:    ['*tidies the space*', 'I\'ll be right here, goshujin-sama.', 'just checking the room.'],
@@ -637,6 +640,7 @@ const AMBIENT_LINES = {
     code:    ['just keeping records, goshujin-sama.', 'organizing notes.', '*tap tap*'],
     nap:     ['oyasumi nasai…', 'just a moment of rest.', 'pardon my drowsiness.'],
     stretch: ['*adjusts posture*', 'a brief stretch, goshujin-sama.', 'better now.'],
+    drink:   ['*delicate sip*', 'water, goshujin-sama.', 'a moment of refreshment.'],
   },
 };
 function ambientLine(category) {
@@ -697,9 +701,9 @@ const LIFE_BEHAVIORS = {
       }
     }, 500);
   },
-  // Sits down at her desk and codes briefly.
+  // Sits down at her desk and codes briefly. KEEP MEDIUM SIZE — user
+  // explicitly said never bigger than the default window.
   deskCoding: () => {
-    if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
     turnTo(-Math.PI / 2);
     container.dataset.room = 'workspace';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 5 });
@@ -724,9 +728,39 @@ const LIFE_BEHAVIORS = {
       finishLife();
     }, 9000);
   },
-  // Naps at the desk on her chair.
+  // Autonomous drink-water — she suddenly decides she needs a sip.
+  // Compose pose live (no hardcoded recipe-style sequence). Uses the
+  // bone-attached asset system. See docs/capabilities.md for the full
+  // pick-up→drink→put-down lifecycle this is a condensed version of.
+  drinkWater: () => {
+    // Skip the full pick-up arc in the idle ambient (saves time);
+    // just go straight to a drinking sip pose.
+    say(ambientLine('drink'), 2800);
+    // 1) Bottle attached to her right hand, tilted for sip.
+    CONTROL_HANDLERS.asset({
+      name: 'water-bottle', show: true,
+      attachTo: 'rightHand', width: '7%', offsetY: -20, tilt: -1.2,
+    });
+    // 2) Raise arm to bring bottle to face.
+    setPoseTarget('rightUpperArm', { rx: -2.0, rz: 0.7, lerp: 25 });
+    setPoseTarget('rightLowerArm', { rx: -0.2, ry: -2.0, lerp: 25 });
+    setPoseTarget('rightHand',     { rx: -0.7, lerp: 25 });
+    setPoseTarget('head',          { rx: -0.25, lerp: 25 });
+    setTimeout(() => {
+      // 3) Lower arm + release bottle back to fixed ground position.
+      setPoseTarget('rightUpperArm', { rx: 0, rz: REST_RIGHT_UPPER_Z, lerp: 25 });
+      setPoseTarget('rightLowerArm', { ry: -REST_LOWER_BEND, lerp: 25 });
+      setPoseTarget('rightHand',     { rx: 0, lerp: 25 });
+      setPoseTarget('head',          { rx: 0, lerp: 25 });
+      CONTROL_HANDLERS.asset({ name: 'water-bottle', show: false });
+      setTimeout(() => {
+        clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand', 'head']);
+        finishLife();
+      }, 1200);
+    }, 2500);
+  },
+  // Naps at the desk on her chair. KEEP MEDIUM SIZE.
   deskNap: () => {
-    if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
     turnTo(-Math.PI / 2);
     container.dataset.room = 'workspace';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
@@ -756,10 +790,10 @@ function pickLifeBehavior() {
   // Bias by time-of-day for realism.
   // Late night → naps + music. Morning → walking. Day → desk-coding mix.
   let pool;
-  if (hour >= 1 && hour < 6) pool = ['deskNap', 'deskNap', 'music', 'walkAround'];
-  else if (hour >= 6 && hour < 11) pool = ['walkAround', 'walkAround', 'jump', 'music'];
-  else if (hour >= 11 && hour < 18) pool = ['deskCoding', 'walkAround', 'music', 'jump'];
-  else pool = ['deskCoding', 'music', 'walkAround', 'deskNap'];
+  if (hour >= 1 && hour < 6) pool = ['deskNap', 'deskNap', 'music', 'walkAround', 'drinkWater'];
+  else if (hour >= 6 && hour < 11) pool = ['walkAround', 'walkAround', 'jump', 'music', 'drinkWater'];
+  else if (hour >= 11 && hour < 18) pool = ['deskCoding', 'walkAround', 'music', 'jump', 'drinkWater', 'drinkWater'];
+  else pool = ['deskCoding', 'music', 'walkAround', 'deskNap', 'drinkWater'];
   return LIFE_BEHAVIORS[pickRandom(pool)];
 }
 // Big-idle: after 35s, she goes on a "life" excursion (walk around,

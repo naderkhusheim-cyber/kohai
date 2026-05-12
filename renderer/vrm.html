@@ -64,22 +64,49 @@
         <rect x="256" y="40" width="10"  height="118" fill="#6a4426"/>
         <rect x="10"  y="148" width="260" height="6" fill="#3a2a1a" opacity="0.5"/>
       </svg>
-      <!-- Office chair (back view — backrest visible behind her shoulders,
-           wheelbase at the bottom). Anchor for code_at_desk. -->
-      <svg class="furniture chair" viewBox="0 0 240 320" xmlns="http://www.w3.org/2000/svg">
-        <!-- backrest -->
-        <rect x="60" y="6"   width="120" height="170" rx="22" fill="#2b2f3a"/>
-        <rect x="72" y="18"  width="96"  height="146" rx="14" fill="#3a3f4d"/>
-        <!-- seat -->
-        <rect x="40" y="170" width="160" height="44"  rx="14" fill="#2b2f3a"/>
-        <rect x="48" y="174" width="144" height="20"  rx="8"  fill="#3a3f4d"/>
-        <!-- post -->
-        <rect x="113" y="210" width="14" height="60" fill="#1a1c20"/>
-        <!-- wheelbase -->
-        <ellipse cx="120" cy="280" rx="80" ry="14" fill="#1a1c20"/>
-        <circle cx="60"  cy="296" r="10" fill="#1a1c20"/>
-        <circle cx="120" cy="304" r="10" fill="#1a1c20"/>
-        <circle cx="180" cy="296" r="10" fill="#1a1c20"/>
+      <!-- Office chair — drawn FROM THE SIDE to match the Flow reference
+           (high-backed padded backrest on the LEFT, cushioned seat
+           extending right, central post, 5-star wheelbase visible from
+           the side). When Kohai is in side profile facing right, the
+           backrest sits behind her back. CSS mirrors the SVG (scaleX -1)
+           when she faces left. -->
+      <svg class="furniture chair" viewBox="0 0 320 440" xmlns="http://www.w3.org/2000/svg">
+        <!-- Tall padded backrest (LEFT side of SVG). Tilted backward
+             ~12° from vertical via a <g rotate> so the chair "leans"
+             rather than reading as a stiff T-pose plank. Rotation pivot
+             is at the BOTTOM of the backrest where it meets the seat,
+             so the top of the backrest swings back (top moves to -x). -->
+        <g transform="rotate(-12 70 270)">
+          <rect x="38" y="20"  width="62" height="260" rx="28" fill="#3a4a66"/>
+          <rect x="46" y="30"  width="46" height="240" rx="20" fill="#5a7295"/>
+          <!-- Center seam stripe in warm contrast color. -->
+          <rect x="60" y="50"  width="18" height="200" rx="9" fill="#c66a3a" opacity="0.7"/>
+          <!-- Highlight band along the top of the backrest. -->
+          <rect x="46" y="30"  width="46" height="10" rx="5" fill="#7a92b5"/>
+        </g>
+        <!-- Armrest bar above the seat. -->
+        <rect x="96" y="250" width="74" height="11" rx="5" fill="#3a4a66"/>
+        <rect x="98" y="252" width="70" height="4" rx="2" fill="#5a7295"/>
+        <!-- Seat cushion — WIDE and prominent so it actually reads as a
+             seat she's sitting on. Extends well past where her thighs
+             land so the chair looks supportive, not a thin strip. -->
+        <rect x="38" y="262" width="256" height="56" rx="22" fill="#3a4a66"/>
+        <rect x="48" y="270" width="238" height="40" rx="18" fill="#5a7295"/>
+        <!-- Seat top highlight (where the cushion's padding catches light). -->
+        <rect x="56" y="272" width="220" height="6" rx="3" fill="#a8b8d8" opacity="0.6"/>
+        <!-- Front-edge shadow on the seat. -->
+        <rect x="36" y="310" width="260" height="8"  rx="4" fill="#1a2030" opacity="0.55"/>
+        <!-- Vertical post (silver/chrome look). -->
+        <rect x="154" y="320" width="16" height="68" fill="#8a92a0"/>
+        <rect x="156" y="320" width="4"  height="68" fill="#c8cdd6"/>
+        <!-- 5-star wheelbase: silver chrome legs + dark rubber wheels. -->
+        <ellipse cx="161" cy="400" rx="120" ry="12" fill="#8a92a0"/>
+        <ellipse cx="161" cy="398" rx="115" ry="4" fill="#c8cdd6"/>
+        <circle cx="50"  cy="418" r="14" fill="#1a1c22" stroke="#6a7280" stroke-width="2"/>
+        <circle cx="105" cy="424" r="14" fill="#1a1c22" stroke="#6a7280" stroke-width="2"/>
+        <circle cx="161" cy="426" r="14" fill="#1a1c22" stroke="#6a7280" stroke-width="2"/>
+        <circle cx="217" cy="424" r="14" fill="#1a1c22" stroke="#6a7280" stroke-width="2"/>
+        <circle cx="272" cy="418" r="14" fill="#1a1c22" stroke="#6a7280" stroke-width="2"/>
       </svg>
     </div>
     <canvas id="canvas"></canvas>

@@ -115,25 +115,71 @@ const PROCEDURAL_ANIMS = {
     hipsTargetY = -0.65;
     say('Hai, sitting down senpai~', 2500);
   },
-  // Office-chair seated pose. Sets the workspace backdrop (chair + desk +
-  // laptop), seats her with thighs forward + calves DOWN (not folded back
-  // like cross-legged), slight forward hunch, arms relaxed at her sides so
-  // Claude can layer typing-arm gestures on top via kohai_pose.
+  // Office-chair seated pose — rewritten from scratch to match the Flow
+  // reference (anime girl on chair, side profile, 3D laptop ON HER LAP,
+  // hands on keyboard, hunched + head down). The laptop is now a 3D mesh
+  // bone-anchored to her hips (tickBodyProps) so it actually lands at her
+  // lap regardless of canvas size or pose. CSS laptop overlay disabled.
   chair_sit: () => {
     container.dataset.room = 'workspace';
-    // Thighs horizontal forward, calves hanging straight DOWN — proper
-    // chair anatomy. Setting lowerLeg rx to 0 doesn't work (calves stay
-    // along upper-leg axis); -1.55 bends them 90° to vertical.
-    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.04, lerp: 5 });
-    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.04, lerp: 5 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 5 });
-    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 5 });
-    setPoseTarget('spine',         { rx: -0.15, lerp: 5 });   // slight hunch toward desk
-    setPoseTarget('head',          { rx: 0.20, lerp: 5 });    // mild head down
-    // Arms at rest (Claude composes typing arms on top of this baseline).
-    setPoseTarget('leftUpperArm',  { rx: 0, rz: REST_LEFT_UPPER_Z,  lerp: 5 });
-    setPoseTarget('rightUpperArm', { rx: 0, rz: REST_RIGHT_UPPER_Z, lerp: 5 });
-    hipsTargetY = -0.55; // seat height
+    if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
+    // Face canvas-LEFT to match the user's reference image (anime girl
+    // sitting in office chair, profile to camera, looking down at laptop
+    // on her thighs). Chair is mirrored so the backrest is on canvas-right
+    // (behind her back). Laptop sits on her camera-left front.
+    turnTo(Math.PI / 2);
+    // Legs: thighs angled forward to horizontal seated position (rx
+    // -1.55 ≈ 90° forward in this rig). Calves angled less (rx -1.10)
+    // so they dangle close to vertical from the knees — matches the
+    // reference image where her feet rest on the floor in front of the
+    // chair.
+    setPoseTarget('leftUpperLeg',  { rx: -1.30, rz:  0.04, lerp: 5 });
+    setPoseTarget('rightUpperLeg', { rx: -1.30, rz: -0.04, lerp: 5 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.30, lerp: 5 });
+    setPoseTarget('rightLowerLeg', { rx: -1.30, lerp: 5 });
+    // GENTLE forward lean so her back stays against the chair backrest.
+    // Previous -0.55 hunched her so far forward she peeled off the seat.
+    setPoseTarget('spine', { rx: -0.18, lerp: 5 });
+    setPoseTarget('head',  { rx: 0.35, lerp: 5 });
+    // Arms reach forward onto the laptop keyboard. Upper arms angle
+    // down + forward (rx -0.5) and slightly inward (rz nudge toward
+    // body center) so the elbows tuck close to her ribs. Forearms bend
+    // forward at the elbow (lowerArm rx -1.25) bringing the hands down
+    // onto the keyboard surface. Hand wrists tilt down (rx -0.4) for
+    // a natural "fingers on keys" pose.
+    // Upper arms swing FORWARD aggressively (rx -0.90) so elbows lead
+    // out in front of her body. Forearms only mildly bent (rx -0.95)
+    // so the hands extend FORWARD past the elbows to land on the
+    // keyboard, not curl back toward her chest.
+    setPoseTarget('leftUpperArm',  { rx: -0.90, rz: REST_LEFT_UPPER_Z + 0.25,  lerp: 5 });
+    setPoseTarget('rightUpperArm', { rx: -0.90, rz: REST_RIGHT_UPPER_Z - 0.25, lerp: 5 });
+    setPoseTarget('leftLowerArm',  { rx: -0.95, ry: -0.10, lerp: 5 });
+    setPoseTarget('rightLowerArm', { rx: -0.95, ry:  0.10, lerp: 5 });
+    setPoseTarget('leftHand',  { rx: -0.30, lerp: 5 });
+    setPoseTarget('rightHand', { rx: -0.30, lerp: 5 });
+    // Smaller hip-drop so her butt actually lands ON the chair seat
+    // instead of hovering below it (previous -0.55 put her pelvis below
+    // the seat surface and she looked like she was floating in mid-air).
+    hipsTargetY = -0.30;
+    // Spawn the 3D laptop and PARENT it to her hips bone so it inherits
+    // her body's transform — laptop always lands on her lap, no matter
+    // which way she's facing.
+    if (hips && !bodyProps.has('laptop')) {
+      const mesh = makeBodyProp('laptop');
+      if (mesh) {
+        // Laptop on her LAP, slightly closer to her body (+Z 0.16) so
+        // her outstretched hands actually meet the keyboard. Keyboard
+        // tilted (rotation.x +0.30) so front-end matches thigh slope.
+        mesh.position.set(0, -0.06, 0.16);
+        mesh.scale.setScalar(1.0);
+        mesh.rotation.x = 0.30;
+        // No Y rotation — mesh's own +Z (screen end) maps to body-forward
+        // so the screen sits at the far end of the keyboard (toward her
+        // knees) and tilts back toward her face.
+        hips.add(mesh);
+        bodyProps.set('laptop', mesh);
+      }
+    }
     say('At my desk, senpai~', 2500);
   },
   stand: () => {
@@ -272,7 +318,11 @@ function onVRMLoaded(gltf) {
   const size = new THREE.Vector3();
   bounds.getSize(size);
   if (size.y > 0) {
-    const targetH = 1.6;
+    // Normalized height — smaller value = character renders smaller in
+    // the canvas (more breathing room around her). Reduced from 1.6 to
+    // 1.3 so the chair has visible margin and she doesn't fill the
+    // canvas every restart.
+    const targetH = 1.3;
     const s = targetH / size.y;
     vrm.scene.scale.setScalar(s);
     vrm.scene.updateMatrixWorld(true);
@@ -1023,6 +1073,7 @@ function animate() {
     tickLipsync();
     tickAccessories();
     tickHandProps();
+    tickBodyProps(dt);
 
     // Mixer first — it writes keyframe data into the bones.
     if (mixer) mixer.update(dt);
@@ -1108,9 +1159,10 @@ function setState(state, opts = {}) {
     hipsTargetY = 0;
     if (typeof exitCoding === 'function') exitCoding();
     walkActive = false;
-    // Clear handheld 3D props (pointer, etc.) — they were leaking across
-    // scene transitions (the stick was still in her hand when she sat down).
+    // Clear handheld + body-mounted 3D props (pointer, lap-laptop, etc.) —
+    // they were leaking across scene transitions.
     for (const k of Array.from(handProps.keys())) clearHandProp(k);
+    for (const k of Array.from(bodyProps.keys())) clearBodyProp(k);
     // Reset window back to medium — fullbody persists across actions
     // otherwise and breaks prop CSS positions (glasses/headphones use
     // canvas % which lands at wrong anatomy in a taller window).
@@ -1645,6 +1697,144 @@ function tickHandProps() {
     // which way she's facing. Looks natural at all camera angles since the
     // stick is a thin vertical cylinder and reads the same from any side.
     p.rotation.set(0, 0, 0);
+  }
+}
+
+// Body-mounted props (laptop on lap, blanket, etc.) are PARENTED directly
+// to the hips bone — so they inherit her body's full transform (position,
+// rotation, scale) automatically. No quaternion math, no offset-rotation,
+// no "is she VRM 0.x?" confusion. When the hips bone rotates with her
+// body turn, the laptop rotates with it. When the spine bends her over,
+// the laptop stays on her thighs.
+//
+// bodyPropGroup is kept as a flat parent registry so we can still
+// enumerate/clear them, but each child mesh gets re-parented onto hips
+// the moment the bone is available.
+const bodyPropGroup = new THREE.Group();
+scene.add(bodyPropGroup);
+const bodyProps = new Map();
+function clearBodyProp(name) {
+  const m = bodyProps.get(name);
+  if (!m) return;
+  if (m.parent) m.parent.remove(m);
+  m.traverse((c) => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+  bodyProps.delete(name);
+}
+function makeBodyProp(kind) {
+  if (kind === 'laptop') {
+    const group = new THREE.Group();
+    // Laptop orientation: this group's +Z is "BEHIND the laptop" (where
+    // her belly is when the laptop sits on her lap). Her face looks DOWN
+    // at the screen from above, so the screen tilts AWAY from her — the
+    // screen pivot is at the BACK of the keyboard (small +Z value), and
+    // the screen leans further +Z at the top (tilted away from user).
+    //
+    // When parented to hips at local pos (0, lap, +forward):
+    //   - Forward of hips is where her thighs end (knees direction)
+    //   - The keyboard sits between her hips and her knees
+    //   - The screen is at the knee-end of the keyboard, tilted back
+    //     TOWARD her face
+    //
+    // Base (keyboard portion).
+    const baseGeo = new THREE.BoxGeometry(0.36, 0.025, 0.26);
+    const base = new THREE.Mesh(baseGeo, new THREE.MeshStandardMaterial({ color: 0x2b2f3a, roughness: 0.6 }));
+    base.position.set(0, 0.015, 0);
+    group.add(base);
+    // Screen back-shell — shorter (15cm tall) so the laptop reads as
+    // a typical clamshell, not an oversized panel.
+    const screenGeo = new THREE.BoxGeometry(0.30, 0.18, 0.005);
+    const screen = new THREE.Mesh(screenGeo, new THREE.MeshStandardMaterial({ color: 0x15171c, roughness: 0.5 }));
+    screen.position.set(0, 0.10, 0.105);
+    screen.rotation.x = 0.45;
+    group.add(screen);
+    // Visible screen face (the dark code-editor backdrop).
+    const glowGeo = new THREE.PlaneGeometry(0.26, 0.155);
+    const glow = new THREE.Mesh(glowGeo, new THREE.MeshBasicMaterial({ color: 0x0e1117, side: THREE.DoubleSide }));
+    glow.position.set(0, 0.10, 0.108);
+    glow.rotation.x = 0.45;
+    group.add(glow);
+    // Code-color stripes on the screen face — facing her. Position each
+    // stripe RELATIVE to the screen's tilted frame: same tilt as the
+    // glow plane, but offset along the screen's outward-normal so they
+    // float CLEARLY in front of the dark glow. Each stripe is given a
+    // tilt-aware Y and Z together so all five rows actually appear on
+    // the screen face (not buried inside the screen geometry).
+    const stripeColors = [0x7ee787, 0x79c0ff, 0xffa657, 0xd2a8ff, 0xff7b72];
+    const stripes = [];
+    const screenCenterY = 0.10;
+    const screenTilt = 0.45;
+    const screenNormalY = -Math.sin(screenTilt);
+    const screenNormalZ =  Math.cos(screenTilt);
+    for (let i = 0; i < 5; i++) {
+      const stripeGeo = new THREE.PlaneGeometry(0.17, 0.012);
+      const mat = new THREE.MeshBasicMaterial({
+        color: stripeColors[i],
+        side: THREE.DoubleSide,
+        depthTest: false,
+      });
+      const stripe = new THREE.Mesh(stripeGeo, mat);
+      stripe.renderOrder = 10;
+      stripe.userData.stripeIndex = i;
+      // Row offset within the tilted screen plane (i=0 top, i=4 bottom).
+      const rowOffset = 0.055 - i * 0.024;
+      const outOffset = 0.008;
+      stripe.position.set(
+        0,
+        screenCenterY + rowOffset * Math.cos(screenTilt) + outOffset * screenNormalY,
+        0.108 - rowOffset * Math.sin(screenTilt) + outOffset * screenNormalZ
+      );
+      stripe.rotation.x = screenTilt;
+      stripes.push(stripe);
+      group.add(stripe);
+    }
+    // Blinking caret at the end of the bottom stripe.
+    const caretGeo = new THREE.PlaneGeometry(0.010, 0.014);
+    const caretMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false });
+    const caret = new THREE.Mesh(caretGeo, caretMat);
+    caret.renderOrder = 11;
+    caret.userData.isCaret = true;
+    const bottom = stripes[stripes.length - 1];
+    caret.position.copy(bottom.position);
+    caret.rotation.x = screenTilt;
+    group.add(caret);
+    group.userData.codeStripes = stripes;
+    group.userData.codeCaret = caret;
+    return group;
+  }
+  return null;
+}
+// Body props are parented to hips on creation (see makeBodyProp). The
+// bone-local transform we set there is all that's needed — three.js
+// inherits world transform automatically.
+//
+// This tick advances any "coding animation" baked into a body prop —
+// e.g. the laptop's screen stripes resize and a caret blinks so it
+// reads as "she's actively typing", not a static panel.
+let _codeTickT = 0;
+const _codeStripeMaxLen = 0.22;
+function tickBodyProps(dt = 0) {
+  _codeTickT += dt;
+  for (const mesh of bodyProps.values()) {
+    const stripes = mesh.userData && mesh.userData.codeStripes;
+    if (!stripes) continue;
+    for (const s of stripes) {
+      const i = s.userData.stripeIndex;
+      const baseLens = [0.14, 0.17, 0.11, 0.18, 0.15];
+      const phase = _codeTickT * (1.0 + i * 0.35) + i * 1.7;
+      const wobble = Math.sin(phase) * 0.02;
+      const len = Math.max(0.05, baseLens[i] + wobble);
+      s.scale.x = len / 0.17;  // base geo width is now 0.17
+      // Anchor stripe left-edge so growth happens on the right side.
+      s.position.x = -0.085 + (len * 0.5);
+    }
+    // Caret follows the bottom stripe's right edge + blinks.
+    const caret = mesh.userData.codeCaret;
+    if (caret && stripes.length) {
+      const bottom = stripes[stripes.length - 1];
+      const len = bottom.scale.x * 0.20;
+      caret.position.x = -0.10 + len + 0.012;
+      caret.visible = Math.floor(_codeTickT * 2) % 2 === 0;
+    }
   }
 }
 

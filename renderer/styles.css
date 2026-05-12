@@ -165,12 +165,13 @@ html, body {
 .lamp    { right: 4%; bottom: 12%; width: 18%; transform: translateY(20px); }
 .bed     { left: 50%; bottom: 11%; width: 70%; transform: translateX(-50%) translateY(20px); }
 .plant   { right: 24%; bottom: 12%; width: 14%; transform: translateY(20px); }
-.chair   { left: 50%; bottom: 0%;  width: 78%; transform: translateX(-50%) translateY(20px); }
+.chair   { left: 72%; bottom: 4%;  width: 80%; transform: translateX(-50%) translateY(20px); }
 .desk    { left: 8%;  bottom: 12%; width: 70%; transform: translateY(20px); }
 
-/* Reveal floor whenever the room is "active" — i.e. she's in any
-   home-mode state (sit / sleep / coding). */
-.kohai-container[data-room] .floor          { opacity: 1; }
+/* Reveal floor only in livingroom / bedroom. Workspace is a clean
+   "studio" backdrop — just the chair, no floor, lamp, or other props. */
+.kohai-container[data-room="livingroom"] .floor,
+.kohai-container[data-room="bedroom"] .floor { opacity: 1; }
 
 /* Per-room visibility. */
 .kohai-container[data-room="livingroom"] .lamp,
@@ -190,31 +191,29 @@ html, body {
   opacity: 1;
   transform: translateY(0);
 }
-.kohai-container[data-room="workspace"] .chair,
-.kohai-container[data-room="workspace"] .desk {
-  opacity: 1;
-  transform: translateX(0) translateY(0);
-}
+/* Workspace = office chair + laptop on her lap. No desk (per the Flow
+   reference: laptop sits directly on her thighs). The side-view chair
+   SVG renders the chair correctly from any angle; mirror it when she
+   faces canvas-left so the backrest stays behind her back. */
+/* Workspace: chair UN-MIRRORED. With turnTo(+π/2) this VRM model faces
+   camera-RIGHT, so the chair's default backrest position (canvas-LEFT)
+   lands behind her back. Critical: do not add scaleX(-1) here or the
+   backrest flips to the wrong side and she ends up "facing" the chair. */
 .kohai-container[data-room="workspace"] .chair {
+  opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
-.kohai-container[data-room="workspace"] .lamp {
-  opacity: 1;
-  transform: translateY(0);
-}
-/* Laptop sits on the DESK in workspace mode. The desk SVG itself is at
-   bottom:12% with ~14% height, so the desk top surface is at ~16%. The
-   laptop SVG has its base at the bottom — sit it just above the desk
-   top. */
-.kohai-container[data-room="workspace"] .laptop {
-  bottom: 16%;
-  left: 22%;
-  width: 38%;
-  transform: translateX(0) translateY(0) scale(1);
-}
+/* Workspace is INTENTIONALLY minimal — chair only. No lamp, no plant,
+   no floor. The 3D laptop on her lap is the only thing besides her body
+   in the scene. */
+/* Laptop in workspace mode: the CSS overlay is FORCE-hidden because the
+   laptop is now a 3D mesh anchored to her hips (see makeBodyProp /
+   tickBodyProps). The 3D version actually tracks her lap. Use !important
+   so the data-coding="1" rule (line ~388) can't accidentally re-show it. */
+.kohai-container[data-room="workspace"] .laptop,
 .kohai-container[data-room="workspace"][data-coding="1"] .laptop {
-  transform: translateX(0) translateY(0) scale(1);
-  animation: none; /* desk-mounted laptop doesn't bounce */
+  opacity: 0 !important;
+  animation: none !important;
 }
 .laptop svg { width: 100%; height: auto; display: block; }
 

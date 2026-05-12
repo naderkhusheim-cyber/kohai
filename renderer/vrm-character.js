@@ -1001,8 +1001,7 @@ function animate() {
     tickExpressions(dt);
     tickLipsync();
     tickAccessories();
-    // tickProps(); // disabled — fought with the active-state CSS transforms.
-                    // Static CSS + data-turn buckets is good enough for now.
+    tickHandProps();
 
     // Mixer first — it writes keyframe data into the bones.
     if (mixer) mixer.update(dt);
@@ -1307,11 +1306,28 @@ const CONTROL_HANDLERS = {
   roommate: ({ key }) => { fireRoommate(key); },
   // Toggle a hand-held / wearable prop. Valid names: pointer, glasses,
   // cup, headphones. `show` is a boolean (default true).
+  //
+  // For the pointer specifically we ALSO spawn a 3D mesh anchored to her
+  // right hand bone so the stick travels with her arm during walking,
+  // pointing, or any pose change. The 2D SVG fallback stays on canvas
+  // for the springy entrance feel but gets the same data-attr toggle.
   prop: ({ name, show }) => {
     if (typeof name !== 'string') return;
     const key = `prop${name.charAt(0).toUpperCase() + name.slice(1)}`;
-    if (show === false) delete container.dataset[key];
-    else container.dataset[key] = '1';
+    if (show === false) {
+      delete container.dataset[key];
+      clearHandProp(name);
+    } else {
+      container.dataset[key] = '1';
+      // Spawn the 3D version for handheld props that should track her arm.
+      if (name === 'pointer' && !handProps.has(name)) {
+        const mesh = makeHandProp(name);
+        if (mesh) {
+          handPropGroup.add(mesh);
+          handProps.set(name, mesh);
+        }
+      }
+    }
   },
   // Room lighting mode. Valid: on (default), dim, off.
   lights: ({ mode }) => {
@@ -1521,6 +1537,67 @@ function applyRecipeToMaterial(material, recipe) {
 
 const accessoryGroup = new THREE.Group();
 scene.add(accessoryGroup);
+
+// Hand-held props live in a separate group anchored to the rightHand bone
+// each frame (parallel to accessoryGroup's head anchor). Lets the pointer
+// stick (and any future tools) ACTUALLY move with her arm — pose her arm
+// up, the stick goes with it. This replaces the 2D CSS SVG which was
+// statically positioned on the canvas and never tracked the hand.
+const handPropGroup = new THREE.Group();
+scene.add(handPropGroup);
+const handProps = new Map(); // name → mesh
+
+function clearHandProp(name) {
+  const m = handProps.get(name);
+  if (!m) return;
+  handPropGroup.remove(m);
+  m.traverse((c) => { if (c.geometry) c.geometry.dispose(); if (c.material) c.material.dispose(); });
+  handProps.delete(name);
+}
+
+function makeHandProp(kind) {
+  if (kind === 'pointer') {
+    const group = new THREE.Group();
+    // Stick extends UP from her grip — cylinder along world +Y by default,
+    // grip at origin, tip at y=0.55. tickHandProps copies her hand POSITION
+    // (not rotation) so the stick stays upright in world space as she walks
+    // / raises her arm — like carrying an umbrella, the prop tilts with
+    // her arm height but doesn't gimbal with palm rotation.
+    const stickGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.55, 12);
+    stickGeo.translate(0, 0.275, 0);
+    const stick = new THREE.Mesh(stickGeo, new THREE.MeshStandardMaterial({ color: 0xd8b787, roughness: 0.6 }));
+    group.add(stick);
+    const ballGeo = new THREE.SphereGeometry(0.025, 16, 12);
+    ballGeo.translate(0, 0.55, 0);
+    const ball = new THREE.Mesh(ballGeo, new THREE.MeshStandardMaterial({ color: 0xff5252, roughness: 0.4 }));
+    group.add(ball);
+    const gripGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.05, 12);
+    gripGeo.translate(0, 0.025, 0);
+    const grip = new THREE.Mesh(gripGeo, new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 }));
+    group.add(grip);
+    return group;
+  }
+  return null;
+}
+
+// Anchor handheld props to the right-hand bone every frame. Copy POSITION
+// only so the prop tracks her hand's location through poses + walking, but
+// the prop's own orientation (e.g. stick pointing up) stays stable instead
+// of gimbal-rotating with her palm. Result: looks like she's carrying it
+// upright, which is what most handheld props (pointer, umbrella, flag,
+// torch) should feel like.
+function tickHandProps() {
+  if (!rightHand || handPropGroup.children.length === 0) return;
+  const handPos = new THREE.Vector3();
+  rightHand.getWorldPosition(handPos);
+  for (const p of handPropGroup.children) {
+    p.position.copy(handPos);
+    // Always upright in world space — stick stays vertical regardless of
+    // which way she's facing. Looks natural at all camera angles since the
+    // stick is a thin vertical cylinder and reads the same from any side.
+    p.rotation.set(0, 0, 0);
+  }
+}
 
 function clearAccessories() {
   while (accessoryGroup.children.length) {

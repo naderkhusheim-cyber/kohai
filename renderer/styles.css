@@ -270,10 +270,11 @@ html, body {
    sits at base; pointer fully extended at 32° angle). The springy
    transition above does the "snap-into-place" feel. */
 .kohai-container[data-prop-pointer="1"]    .prop.pointer    {
-  opacity: 1;
-  /* Match the per-data-turn rotation. Default front view: stick goes
-     up-right from her right hand on canvas left. */
-  transform: rotate(28deg) scaleY(1);
+  /* 2D SVG pointer is now superseded by the 3D bone-anchored mesh that
+     follows her hand. Keep the data-prop-pointer attribute toggling for
+     legacy callers and so the master-reset detection still works, but
+     hide the SVG itself. */
+  opacity: 0;
 }
 .kohai-container[data-prop-glasses="1"]    .prop.glasses    {
   opacity: 1;

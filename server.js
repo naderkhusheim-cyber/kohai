@@ -8,7 +8,7 @@ const KOHAI_DIR = path.join(os.homedir(), '.kohai');
 const TOKEN_PATH = path.join(KOHAI_DIR, 'token');
 const PORT = 17455;
 
-const VALID_CONTROLS = ['say', 'motion', 'size', 'position', 'hide', 'show', 'walk', 'turn', 'pose', 'clear_pose', 'play_animation', 'skin', 'roommate'];
+const VALID_CONTROLS = ['say', 'motion', 'size', 'position', 'hide', 'show', 'walk', 'turn', 'pose', 'clear_pose', 'play_animation', 'skin', 'roommate', 'prop', 'lights'];
 
 function getOrCreateToken() {
   fs.mkdirSync(KOHAI_DIR, { recursive: true });
@@ -20,7 +20,7 @@ function getOrCreateToken() {
   return token;
 }
 
-module.exports = function startServer({ onEvent, onControl }) {
+module.exports = function startServer({ onEvent, onControl, onCapture }) {
   const token = getOrCreateToken();
   const server = express();
   server.use(express.json({ limit: '256kb' }));
@@ -37,6 +37,20 @@ module.exports = function startServer({ onEvent, onControl }) {
     if (!VALID_CONTROLS.includes(cmd)) return res.status(400).json({ error: 'unknown control', valid: VALID_CONTROLS });
     onControl(cmd, req.body || {});
     res.status(204).end();
+  });
+
+  // Capture the Kohai window as a PNG. Used by the kohai_screenshot MCP
+  // tool so Claude can SEE the current pose and iterate against a target.
+  server.get('/control/screenshot', async (req, res) => {
+    if (req.headers['x-kohai-token'] !== token) return res.status(401).end();
+    if (!onCapture) return res.status(501).json({ error: 'capture not supported' });
+    try {
+      const png = await onCapture();
+      res.set('Content-Type', 'image/png');
+      res.send(png);
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
   });
 
   server.get('/health', (_req, res) => res.json({ ok: true, token_path: TOKEN_PATH }));

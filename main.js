@@ -91,6 +91,7 @@ function clampToDisplay(x, y, w, h) {
 }
 
 let restingPosition = null; // remembers where to drift back to
+let walkInProgress = false; // true while a kohai_walk slide is animating
 
 // Manual per-frame tween — macOS's native setBounds animate flag misbehaves
 // on transparent always-on-top windows (teleports), so we drive position
@@ -141,7 +142,28 @@ function walkWindowTo(xPct, yPct, ms) {
   const [w, h] = win.getSize();
   const targetX = dx + Math.round((dw - w) * xPct);
   const targetY = dy + Math.round((dh - h) * yPct);
-  smoothMoveTo(targetX, targetY, ms || 1500);
+  const [curX] = win.getPosition();
+  const duration = ms || 1500;
+
+  // Face the direction of travel. Mostly-horizontal moves get a 90° side
+  // profile; ignore the turn if she's barely moving horizontally (purely
+  // vertical slide).
+  const dxPixels = targetX - curX;
+  if (Math.abs(dxPixels) > 30) {
+    const faceRadians = dxPixels < 0 ? -Math.PI / 2 : Math.PI / 2;
+    win.webContents.send('kohai:control', { cmd: 'turn', payload: { radians: faceRadians } });
+  }
+
+  // Auto-cycle her legs for the duration of the slide.
+  walkInProgress = true;
+  win.webContents.send('kohai:control', { cmd: 'play_animation', payload: { name: 'walking', loop: true } });
+  smoothMoveTo(targetX, targetY, duration);
+  setTimeout(() => {
+    if (!win || win.isDestroyed()) return;
+    win.webContents.send('kohai:control', { cmd: 'play_animation', payload: { name: 'walking_stop' } });
+    win.webContents.send('kohai:control', { cmd: 'turn', payload: { radians: 0 } });
+    walkInProgress = false;
+  }, duration + 100);
 }
 
 function createWindow() {
@@ -250,9 +272,19 @@ app.whenReady().then(() => {
   try { require('./scripts/setup-claude').main(); } catch (e) { console.warn('[kohai] setup-claude failed:', e.message); }
 
   ipcMain.on('kohai:walk', (_evt, { x, y, ms }) => walkWindowTo(x, y, ms));
+  // Renderer-initiated resize (poses that need extra height like "touch"
+  // or "code_at_desk" call this to switch to the fullbody window).
+  ipcMain.on('kohai:resize-request', (_evt, { name }) => applyControl('size', { name }));
   startEngine();
   createWindow();
   startServer({
+    // Capture the current Kohai window as a PNG buffer. Lets Claude SEE
+    // what she actually looks like after a pose, so he can iterate.
+    onCapture: async () => {
+      if (!win || win.isDestroyed()) throw new Error('window not ready');
+      const image = await win.webContents.capturePage();
+      return image.toPNG();
+    },
     onEvent: (eventType, data) => {
       if (!win || win.isDestroyed()) return;
       if (eventType === 'UserPromptSubmit') {
@@ -260,8 +292,9 @@ app.whenReady().then(() => {
         return;
       }
       // Move-to-action: slide toward center-bottom on coding tools.
+      // Skip while a walk is in progress so the two animations don't fight.
       const codingTools = new Set(['Edit', 'MultiEdit', 'Write', 'Bash']);
-      if (eventType === 'PreToolUse' && codingTools.has(data?.tool_name)) {
+      if (eventType === 'PreToolUse' && codingTools.has(data?.tool_name) && !walkInProgress) {
         moveToWorkPosition();
       } else if (eventType === 'Stop') {
         // Session settled — drift back home.

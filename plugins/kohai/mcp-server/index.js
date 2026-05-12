@@ -252,6 +252,56 @@ Each step can include any of: pose (bones map), clear_pose (array of names), say
     handler: async ({ name }) => kohaiPost('skin', { name }),
   },
   {
+    name: 'kohai_prop',
+    description: 'Show or hide a hand-held / wearable prop on Kohai. Use this when her bone-pose alone can\'t express the moment — e.g. she can\'t physically reach a line of code at the top of the terminal, so give her a "pointer" stick that extends from her hand. Or put "glasses" on her for study/focus mode. Props: pointer (teacher stick, angled up-right toward terminal text), glasses (round reading glasses on her face), cup (coffee on the floor beside her), headphones (on her head). Multiple props can be on at once.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          enum: ['pointer', 'glasses', 'cup', 'headphones'],
+          description: 'Prop to toggle.',
+        },
+        show: { type: 'boolean', description: 'true to show, false to hide. Default true.' },
+      },
+      required: ['name'],
+    },
+    handler: async ({ name, show }) => kohaiPost('prop', { name, show: show !== false }),
+  },
+  {
+    name: 'kohai_lights',
+    description: 'Change the room\'s lighting. Use "dim" for cozy evening / focused-coding mood, "off" for late-night / sleepy moments, "on" to restore normal brightness. Applies a translucent overlay + dims the canvas.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        mode: {
+          type: 'string',
+          enum: ['on', 'dim', 'off'],
+          description: 'Lighting mode.',
+        },
+      },
+      required: ['mode'],
+    },
+    handler: async ({ mode }) => kohaiPost('lights', { mode }),
+  },
+  {
+    name: 'kohai_screenshot',
+    description: 'Capture the current Kohai window as an image. Use this AFTER setting a pose to see what she actually looks like — then iterate (adjust bones, re-screenshot, repeat) until the pose matches the user\'s intent. This is the key feedback loop: pose → see → adjust → see again. Without this you are flying blind.',
+    inputSchema: { type: 'object', properties: {} },
+    handler: async () => {
+      const token = getToken();
+      if (!token) throw new Error('Kohai is not running');
+      const res = await fetch(`${KOHAI_URL}/control/screenshot`, {
+        method: 'GET',
+        headers: { 'X-Kohai-Token': token },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) throw new Error(`screenshot failed: ${res.status}`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      return { __mcpContent: [{ type: 'image', data: buf.toString('base64'), mimeType: 'image/png' }] };
+    },
+  },
+  {
     name: 'kohai_play_animation',
     description: 'Play a VRM animation clip by name. Animations are loaded from assets/vrm-animations/<name>.vrma. Common names: idle, wave, celebrate, thinking, walking, bow, sit, type. This is the preferred way to give Kohai life — drop in a .vrma file once and call by name.',
     inputSchema: {
@@ -409,6 +459,11 @@ async function handle(req) {
     if (!tool) return error(id, -32602, `Unknown tool: ${name}`);
     try {
       const result = await tool.handler(args);
+      // Image/multi-content responses (e.g. kohai_screenshot) signal with
+      // the __mcpContent marker and ship MCP content blocks unchanged.
+      if (result && typeof result === 'object' && Array.isArray(result.__mcpContent)) {
+        return reply(id, { content: result.__mcpContent });
+      }
       const text = result === undefined || result === true
         ? 'ok'
         : (typeof result === 'string' ? result : JSON.stringify(result, null, 2));

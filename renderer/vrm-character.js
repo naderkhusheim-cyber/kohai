@@ -99,89 +99,17 @@ function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
 // Procedural fallbacks — when no .vrma file exists for a name, run a
 // hand-coded pose sequence using kohai_pose. Each entry is a function
 // that calls setPoseTarget / clearPoseTargets on its own schedule.
+//
+// ARCHITECTURE NOTE — only state-like primitives stay hardcoded here:
+//   - stand: master reset (always needed; everything composes off of it)
+//   - walking / walking_stop: leg cycle toggle for kohai_walk
+//
+// All scene-level recipes (sit, chair_sit, sleep, home, code_at_desk,
+// wave, bow, point, …) were DELETED. They are now composed live by
+// Claude via /kohai-do, using docs/anatomy.md + docs/capabilities.md
+// as the rig spec. Claude calls setPoseTarget on individual bones,
+// drops assets via kohai_asset, then verifies with kohai_screenshot.
 const PROCEDURAL_ANIMS = {
-  sit: () => {
-    // Floor-cushion seated pose. Legs cross-legged style.
-    container.dataset.room = 'livingroom';
-    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
-    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
-    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
-    setPoseTarget('spine',         { rx: 0.05, lerp: 4 });
-    setPoseTarget('leftUpperArm',  { rx: -0.3, rz: REST_LEFT_UPPER_Z + 0.1, lerp: 4 });
-    setPoseTarget('rightUpperArm', { rx: -0.3, rz: REST_RIGHT_UPPER_Z - 0.1, lerp: 4 });
-    setPoseTarget('leftLowerArm',  { ry: -0.6, lerp: 4 });
-    setPoseTarget('rightLowerArm', { ry:  0.6, lerp: 4 });
-    hipsTargetY = -0.65;
-    say('Hai, sitting down senpai~', 2500);
-  },
-  // Office-chair seated pose — rewritten from scratch to match the Flow
-  // reference (anime girl on chair, side profile, 3D laptop ON HER LAP,
-  // hands on keyboard, hunched + head down). The laptop is now a 3D mesh
-  // bone-anchored to her hips (tickBodyProps) so it actually lands at her
-  // lap regardless of canvas size or pose. CSS laptop overlay disabled.
-  chair_sit: () => {
-    container.dataset.room = 'workspace';
-    if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
-    // Face canvas-LEFT to match the user's reference image (anime girl
-    // sitting in office chair, profile to camera, looking down at laptop
-    // on her thighs). Chair is mirrored so the backrest is on canvas-right
-    // (behind her back). Laptop sits on her camera-left front.
-    turnTo(Math.PI / 2);
-    // Legs: thighs angled forward to horizontal seated position (rx
-    // -1.55 ≈ 90° forward in this rig). Calves angled less (rx -1.10)
-    // so they dangle close to vertical from the knees — matches the
-    // reference image where her feet rest on the floor in front of the
-    // chair.
-    setPoseTarget('leftUpperLeg',  { rx: -1.30, rz:  0.04, lerp: 5 });
-    setPoseTarget('rightUpperLeg', { rx: -1.30, rz: -0.04, lerp: 5 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.30, lerp: 5 });
-    setPoseTarget('rightLowerLeg', { rx: -1.30, lerp: 5 });
-    // GENTLE forward lean so her back stays against the chair backrest.
-    // Previous -0.55 hunched her so far forward she peeled off the seat.
-    setPoseTarget('spine', { rx: -0.18, lerp: 5 });
-    setPoseTarget('head',  { rx: 0.35, lerp: 5 });
-    // Arms reach forward onto the laptop keyboard. Upper arms angle
-    // down + forward (rx -0.5) and slightly inward (rz nudge toward
-    // body center) so the elbows tuck close to her ribs. Forearms bend
-    // forward at the elbow (lowerArm rx -1.25) bringing the hands down
-    // onto the keyboard surface. Hand wrists tilt down (rx -0.4) for
-    // a natural "fingers on keys" pose.
-    // Upper arms swing FORWARD aggressively (rx -0.90) so elbows lead
-    // out in front of her body. Forearms only mildly bent (rx -0.95)
-    // so the hands extend FORWARD past the elbows to land on the
-    // keyboard, not curl back toward her chest.
-    setPoseTarget('leftUpperArm',  { rx: -0.90, rz: REST_LEFT_UPPER_Z + 0.25,  lerp: 5 });
-    setPoseTarget('rightUpperArm', { rx: -0.90, rz: REST_RIGHT_UPPER_Z - 0.25, lerp: 5 });
-    setPoseTarget('leftLowerArm',  { rx: -0.95, ry: -0.10, lerp: 5 });
-    setPoseTarget('rightLowerArm', { rx: -0.95, ry:  0.10, lerp: 5 });
-    setPoseTarget('leftHand',  { rx: -0.30, lerp: 5 });
-    setPoseTarget('rightHand', { rx: -0.30, lerp: 5 });
-    // Smaller hip-drop so her butt actually lands ON the chair seat
-    // instead of hovering below it (previous -0.55 put her pelvis below
-    // the seat surface and she looked like she was floating in mid-air).
-    hipsTargetY = -0.30;
-    // Spawn the 3D laptop and PARENT it to her hips bone so it inherits
-    // her body's transform — laptop always lands on her lap, no matter
-    // which way she's facing.
-    if (hips && !bodyProps.has('laptop')) {
-      const mesh = makeBodyProp('laptop');
-      if (mesh) {
-        // Laptop on her LAP, slightly closer to her body (+Z 0.16) so
-        // her outstretched hands actually meet the keyboard. Keyboard
-        // tilted (rotation.x +0.30) so front-end matches thigh slope.
-        mesh.position.set(0, -0.06, 0.16);
-        mesh.scale.setScalar(1.0);
-        mesh.rotation.x = 0.30;
-        // No Y rotation — mesh's own +Z (screen end) maps to body-forward
-        // so the screen sits at the far end of the keyboard (toward her
-        // knees) and tilts back toward her face.
-        hips.add(mesh);
-        bodyProps.set('laptop', mesh);
-      }
-    }
-    say('At my desk, senpai~', 2500);
-  },
   stand: () => {
     walkActive = false;          // stop any leg-cycle in progress
     // Actively animate legs back to straight + spine to neutral.
@@ -208,42 +136,10 @@ const PROCEDURAL_ANIMS = {
     ]), 1300);
     say('Standing up!', 2000);
   },
-  sleep: () => {
-    // Bedroom appears: bed fades in. She slumps forward heavily with
-    // head fully dropped — reads as "dozed off sitting up."
-    container.dataset.room = 'bedroom';
-    setPoseTarget('leftUpperLeg',  { rx: 1.40, rz:  0.20, lerp: 6 });
-    setPoseTarget('rightUpperLeg', { rx: 1.40, rz: -0.20, lerp: 6 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.40, lerp: 6 });
-    setPoseTarget('rightLowerLeg', { rx: -1.40, lerp: 6 });
-    setPoseTarget('spine', { rx: -0.65, lerp: 6 });        // heavy forward slump
-    setPoseTarget('head',  { rx: 0.85, rz: 0.15, lerp: 6 }); // head fully drooped
-    // Upper arms at REST (don't touch rz — default A-pose has them hanging).
-    // Curl just the forearms into her lap.
-    setPoseTarget('leftUpperArm',  { rx: -0.10, rz: REST_LEFT_UPPER_Z,  lerp: 6 });
-    setPoseTarget('rightUpperArm', { rx: -0.10, rz: REST_RIGHT_UPPER_Z, lerp: 6 });
-    setPoseTarget('leftLowerArm',  { ry: -1.30, lerp: 6 });
-    setPoseTarget('rightLowerArm', { ry:  1.30, lerp: 6 });
-    hipsTargetY = -0.60;
-    setMoodExpression('sleepy');
-    say('Oyasumi, senpai…', 3000);
-  },
-  home: () => {
-    // Show the living room without changing pose — she's just "at home."
-    container.dataset.room = 'livingroom';
-    say('Welcome to my house, senpai!', 2500);
-  },
-  // NOTE: One-shot scenes (wave, bow, thinking, celebrate, touch,
-  // code_at_desk, peek_code) used to be hardcoded here. They were deleted
-  // intentionally — per the project vision, those should be composed LIVE
-  // by Claude via /kohai-do (with screenshot feedback), not from canned JS
-  // recipes that feel like a sequenced jukebox. The only scenes that stay
-  // hardcoded are the state-like ones below: sit, stand, sleep, home,
-  // walking. Everything else routes through Claude composition.
 
   // Walking leg cycle — sets the walkActive flag that the animate loop's
-  // procedural-walking block reads (vrm-character.js:854). Call this BEFORE
-  // sliding her window via kohai_walk so the legs cycle during the move.
+  // procedural-walking block reads. Call this BEFORE sliding her window
+  // via kohai_walk so the legs cycle during the move.
   walking: () => { walkActive = true; walkPhase = 0; },
   // Stop walking — reset every bone the walking cycle wrote directly so she
   // settles back into A-pose instead of freezing on the last step frame.

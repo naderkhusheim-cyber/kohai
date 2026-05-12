@@ -118,6 +118,7 @@ const PROCEDURAL_ANIMS = {
     say('Hai, sitting down senpai~', 2500);
   },
   stand: () => {
+    walkActive = false;          // stop any leg-cycle in progress
     // Actively animate legs back to straight + spine to neutral.
     // clearPoseTargets alone leaves bones in their last-driven rotation
     // (sit pose retained legs bent). Targeting 0 explicitly is what
@@ -143,19 +144,20 @@ const PROCEDURAL_ANIMS = {
     say('Standing up!', 2000);
   },
   sleep: () => {
-    // Bedroom appears: bed fades in, lamp dimmed-warm. Kohai lies on
-    // the bed (legs straight, body tilted, hips lowered onto the bed
-    // silhouette).
+    // Bedroom appears: bed fades in, lamp dimmed-warm. She sits on the
+    // bed cross-legged with head drooped — reads as drowsy / about-to-sleep.
+    // Earlier "lying flat" attempts (hipsTargetY=-1.10) dropped her below
+    // the canvas entirely; this seated-on-bed pose stays in frame.
     container.dataset.room = 'bedroom';
-    setPoseTarget('leftUpperLeg',  { rx: 0.05, lerp: 3 });
-    setPoseTarget('rightUpperLeg', { rx: 0.05, lerp: 3 });
-    setPoseTarget('leftLowerLeg',  { rx: 0, lerp: 3 });
-    setPoseTarget('rightLowerLeg', { rx: 0, lerp: 3 });
-    setPoseTarget('spine', { rx: 0.05, rz: 0.05, lerp: 3 });
-    setPoseTarget('head',  { rx: 0.15, rz: 0.10, lerp: 3 });
-    setPoseTarget('leftUpperArm',  { rx: -0.3, rz: -0.15, lerp: 3 });
-    setPoseTarget('rightUpperArm', { rx: -0.3, rz:  0.15, lerp: 3 });
-    hipsTargetY = -1.10; // drop hips way down for lying-flat illusion
+    setPoseTarget('leftUpperLeg',  { rx: 1.30, rz:  0.20, lerp: 3 });
+    setPoseTarget('rightUpperLeg', { rx: 1.30, rz: -0.20, lerp: 3 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.30, lerp: 3 });
+    setPoseTarget('rightLowerLeg', { rx: -1.30, lerp: 3 });
+    setPoseTarget('spine', { rx: -0.15, lerp: 3 });    // slight slump
+    setPoseTarget('head',  { rx: 0.35, rz: 0.10, lerp: 3 }); // head droopy
+    setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 3 });
+    setPoseTarget('rightUpperArm', { rx: -0.20, lerp: 3 });
+    hipsTargetY = -0.55;  // seated on bed, in frame
     setMoodExpression('sleepy');
     say('Oyasumi, senpai…', 3000);
   },
@@ -164,82 +166,31 @@ const PROCEDURAL_ANIMS = {
     container.dataset.room = 'livingroom';
     say('Welcome to my house, senpai!', 2500);
   },
-  // "Touch the code": she turns 180° (back to the user, facing the
-  // terminal text behind her) and reaches her right arm up + forward
-  // as if pointing at a line of code on the screen.
-  // Window should be 'fullbody' size so the full reach is visible.
-  touch: () => {
-    turnTo(Math.PI);             // back-to-camera
-    // -1.55 (just shy of straight up); -2.10 over-rotates past vertical
-    // and the arm comes BACK DOWN behind her, which read as "arm at side."
-    setPoseTarget('rightUpperArm', { rx: -1.55, rz: 0.20, lerp: 6 });
-    setPoseTarget('rightLowerArm', { ry: -0.45, lerp: 6 });
-    setPoseTarget('rightHand',     { rx: -0.20, lerp: 8 });
-    setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 6 });
-    setPoseTarget('spine',         { rx: -0.05, lerp: 6 });
-    setPoseTarget('head',          { rx: -0.05, ry: 0.10, lerp: 6 });
-    say('Mm? Senpai, what does this line do?', 3000);
-  },
-  // "Coding at her desk" — full Flow-reference scene: chair appears
-  // behind her, she sits down, laptop overlay slides to her lap, and
-  // her typing arms cycle. Side-profile rotation makes it cinematic.
-  code_at_desk: () => {
-    container.dataset.room = 'workspace';
-    // Sit pose so she's seated on the chair.
-    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
-    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
-    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
-    setPoseTarget('spine',         { rx: -0.10, lerp: 4 }); // slight hunch over laptop
-    hipsTargetY = -0.55;
-    // Light forward look (head down at the screen).
-    setPoseTarget('head', { rx: 0.30, lerp: 5 });
-    // Coding mode drives the typing arms + the laptop overlay; the
-    // [data-room="workspace"] CSS rules move the laptop down to lap level.
-    enterCoding(60000);
-    say('Coding time, senpai~', 2500);
-  },
-  // Variant: looks at code over her shoulder (gentle, less dramatic).
-  peek_code: () => {
-    setPoseTarget('rightUpperArm', { rx: -1.20, rz: 0.50, lerp: 6 });
-    setPoseTarget('rightLowerArm', { ry: -1.20, lerp: 6 });
-    setPoseTarget('rightHand',     { rx: -0.30, lerp: 8 });
-    setPoseTarget('spine',         { rx: -0.18, ry: 0.20, lerp: 6 });
-    setPoseTarget('head',          { rx: 0.15, ry: 0.35, lerp: 6 });
-    say('Ehehe, let me see senpai\'s code…', 3000);
-  },
-  wave: () => {
-    setPoseTarget('rightUpperArm', { rx: -1.6, rz: 0.6, lerp: 8 });
-    setPoseTarget('rightLowerArm', { ry: -1.0, lerp: 8 });
-    let i = 0;
-    const tick = () => {
-      setPoseTarget('rightHand', { rx: i % 2 === 0 ? -0.8 : 0, lerp: 14 });
-      i++;
-      if (i < 6) setTimeout(tick, 280);
-      else setTimeout(() => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand']), 400);
-    };
-    tick();
-    say('Hi senpai!', 2000);
-  },
-  bow: () => {
-    setPoseTarget('spine', { rx: -0.55, lerp: 3 });
-    setPoseTarget('head',  { rx: 0.5,   lerp: 3 });
-    setTimeout(() => clearPoseTargets(['spine', 'head']), 1800);
-    say('Yoroshiku, senpai!', 2000);
-  },
-  thinking: () => {
-    setPoseTarget('rightUpperArm', { rx: -1.4, rz: 0.55, lerp: 6 });
-    setPoseTarget('rightLowerArm', { ry: -1.3, lerp: 6 });
-    setPoseTarget('rightHand',     { rx: -0.5, lerp: 6 });
-    setPoseTarget('head',          { rx: 0.18, rz: -0.12, lerp: 6 });
-    setTimeout(() => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand', 'head']), 2500);
-    say('Hmm…', 2000);
-  },
-  celebrate: () => {
-    setPoseTarget('leftUpperArm',  { rx: -2.4, rz: -0.4, lerp: 14 });
-    setPoseTarget('rightUpperArm', { rx: -2.4, rz:  0.4, lerp: 14 });
-    setTimeout(() => clearPoseTargets(['leftUpperArm', 'rightUpperArm']), 700);
-    say('Yatta!!', 2000);
+  // NOTE: One-shot scenes (wave, bow, thinking, celebrate, touch,
+  // code_at_desk, peek_code) used to be hardcoded here. They were deleted
+  // intentionally — per the project vision, those should be composed LIVE
+  // by Claude via /kohai-do (with screenshot feedback), not from canned JS
+  // recipes that feel like a sequenced jukebox. The only scenes that stay
+  // hardcoded are the state-like ones below: sit, stand, sleep, home,
+  // walking. Everything else routes through Claude composition.
+
+  // Walking leg cycle — sets the walkActive flag that the animate loop's
+  // procedural-walking block reads (vrm-character.js:854). Call this BEFORE
+  // sliding her window via kohai_walk so the legs cycle during the move.
+  walking: () => { walkActive = true; walkPhase = 0; },
+  // Stop walking — reset every bone the walking cycle wrote directly so she
+  // settles back into A-pose instead of freezing on the last step frame.
+  walking_stop: () => {
+    walkActive = false;
+    walkPhase = 0;
+    if (leftUpperLeg)  leftUpperLeg.rotation.x  = 0;
+    if (rightUpperLeg) rightUpperLeg.rotation.x = 0;
+    if (leftLowerLeg)  leftLowerLeg.rotation.x  = 0;
+    if (rightLowerLeg) rightLowerLeg.rotation.x = 0;
+    if (leftUpperArm)  leftUpperArm.rotation.x  = 0;
+    if (rightUpperArm) rightUpperArm.rotation.x = 0;
+    if (spine) spine.rotation.x = 0;
+    if (hips)  hips.position.y = 0;
   },
 };
 
@@ -663,7 +614,7 @@ function noteActivity() { lastActivityAt = performance.now(); }
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
   if (idleMs < 45000) return;
-  if (scenarioActive || coding) return;
+  if (scenarioActive || coding || lifeBehaviorActive) return;
   if (animations.has('idle')) {
     playAnimation('idle', { loop: true });
   } else {
@@ -671,6 +622,137 @@ setInterval(() => {
   }
   lastActivityAt = performance.now() - Math.random() * 30000;
 }, 8000);
+
+// — "Kohai life" loop —
+// Every 90–180s of true idle, Kohai autonomously LIVES: walks around her
+// space, jumps for joy, listens to music with headphones, sits at her desk
+// coding, naps at the desk. Randomized so it doesn't feel like a scripted
+// sequence. Per project vision: idle = the ONLY hardcoded scenes; everything
+// else is composed live by Claude via /kohai-do.
+let lifeBehaviorActive = false;
+const LIFE_BEHAVIORS = {
+  // She strolls across her space and comes back.
+  walkAround: () => {
+    if (!window.kohai || !window.kohai.walk) return finishLife();
+    const targets = [
+      [0.15, 0.7], [0.85, 0.7], [0.50, 0.7], [0.20, 0.7], [0.80, 0.7],
+    ];
+    const dest = pickRandom(targets);
+    say(pickRandom(['*strolls around*', 'just stretching my legs~', 'pacing pacing~']), 2400);
+    window.kohai.walk(dest[0], dest[1], 3000);
+    setTimeout(finishLife, 3600);
+  },
+  // She bounces with joy — celebrate-style arms-up snap.
+  jump: () => {
+    say(pickRandom(['yotto~ HOP!', 'piyo piyo!', 'ehehe~ jumping~']), 1800);
+    // Crouch...
+    setPoseTarget('leftUpperLeg',  { rx: 0.4, lerp: 30 });
+    setPoseTarget('rightUpperLeg', { rx: 0.4, lerp: 30 });
+    setPoseTarget('leftLowerLeg',  { rx: -0.6, lerp: 30 });
+    setPoseTarget('rightLowerLeg', { rx: -0.6, lerp: 30 });
+    setTimeout(() => {
+      // Apex — arms overhead celebrate snap
+      setPoseTarget('leftUpperLeg',  { rx: 0,    lerp: 50 });
+      setPoseTarget('rightUpperLeg', { rx: 0,    lerp: 50 });
+      setPoseTarget('leftLowerLeg',  { rx: 0,    lerp: 50 });
+      setPoseTarget('rightLowerLeg', { rx: 0,    lerp: 50 });
+      setPoseTarget('leftUpperArm',  { rx: -2.4, rz: -0.4, lerp: 50 });
+      setPoseTarget('rightUpperArm', { rx: -2.4, rz:  0.4, lerp: 50 });
+    }, 250);
+    setTimeout(() => {
+      clearPoseTargets();
+      finishLife();
+    }, 1100);
+  },
+  // She listens to music — headphones on, gentle head bob.
+  music: () => {
+    container.dataset.propHeadphones = '1';
+    say(pickRandom(['*bobbing to lo-fi*', 'la la la~', 'ne, senpai, this song is so good!']), 3500);
+    let bobs = 0;
+    const bobInterval = setInterval(() => {
+      setPoseTarget('head', { rz: bobs % 2 === 0 ? 0.18 : -0.18, lerp: 6 });
+      bobs++;
+      if (bobs >= 8) {
+        clearInterval(bobInterval);
+        clearPoseTargets(['head']);
+        delete container.dataset.propHeadphones;
+        finishLife();
+      }
+    }, 500);
+  },
+  // Sits down at her desk and codes briefly.
+  deskCoding: () => {
+    if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
+    turnTo(Math.PI / 2);
+    container.dataset.room = 'workspace';
+    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 5 });
+    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 5 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 5 });
+    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 5 });
+    setPoseTarget('spine', { rx: -0.35, lerp: 5 });
+    setPoseTarget('head',  { rx: 0.45,  lerp: 5 });
+    setPoseTarget('leftUpperArm',  { rx: -1.10, rz: REST_LEFT_UPPER_Z + 0.30, lerp: 5 });
+    setPoseTarget('rightUpperArm', { rx: -1.10, rz: REST_RIGHT_UPPER_Z - 0.30, lerp: 5 });
+    setPoseTarget('leftLowerArm',  { ry: -1.20, lerp: 5 });
+    setPoseTarget('rightLowerArm', { ry:  1.20, lerp: 5 });
+    hipsTargetY = -0.55;
+    enterCoding(8000);
+    say(pickRandom(['*tap tap tap*', 'working on my own stuff~', 'just sketching ideas']), 3500);
+    setTimeout(() => {
+      exitCoding();
+      clearPoseTargets();
+      turnTo(0);
+      hipsTargetY = 0;
+      delete container.dataset.room;
+      finishLife();
+    }, 9000);
+  },
+  // Naps at the desk on her chair.
+  deskNap: () => {
+    if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
+    turnTo(Math.PI / 2);
+    container.dataset.room = 'workspace';
+    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
+    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
+    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
+    setPoseTarget('spine', { rx: -0.55, lerp: 3 });   // slumped forward onto desk
+    setPoseTarget('head',  { rx: 0.7,   lerp: 3 });   // forehead-on-desk droop
+    setPoseTarget('leftUpperArm',  { rx: -0.40, lerp: 4 });
+    setPoseTarget('rightUpperArm', { rx: -0.40, lerp: 4 });
+    hipsTargetY = -0.55;
+    setMoodExpression('sleepy');
+    say(pickRandom(['*zzz*', '...zzz... senpai...', 'mmm... five more minutes...']), 4500);
+    setTimeout(() => {
+      clearPoseTargets();
+      turnTo(0);
+      hipsTargetY = 0;
+      delete container.dataset.room;
+      setMoodExpression('happy');
+      finishLife();
+    }, 7000);
+  },
+};
+function finishLife() { lifeBehaviorActive = false; lastActivityAt = performance.now() - 30000; }
+function pickLifeBehavior() {
+  const hour = new Date().getHours();
+  // Bias by time-of-day for realism.
+  // Late night → naps + music. Morning → walking. Day → desk-coding mix.
+  let pool;
+  if (hour >= 1 && hour < 6) pool = ['deskNap', 'deskNap', 'music', 'walkAround'];
+  else if (hour >= 6 && hour < 11) pool = ['walkAround', 'walkAround', 'jump', 'music'];
+  else if (hour >= 11 && hour < 18) pool = ['deskCoding', 'walkAround', 'music', 'jump'];
+  else pool = ['deskCoding', 'music', 'walkAround', 'deskNap'];
+  return LIFE_BEHAVIORS[pickRandom(pool)];
+}
+setInterval(() => {
+  const idleMs = performance.now() - lastActivityAt;
+  if (idleMs < 90000) return;       // user must be idle 90s+
+  if (scenarioActive || coding || walkActive || lifeBehaviorActive) return;
+  lifeBehaviorActive = true;
+  const fn = pickLifeBehavior();
+  try { fn(); } catch (e) { console.warn('[life]', e.message); finishLife(); }
+}, 15000);
 
 // — Roommate vibes: time-aware unprompted reactions —
 // She notices when it's late, when you've been idle a long time, when you've
@@ -811,8 +893,21 @@ function animate() {
     const next = cur + (bodyTargetY - cur) * Math.min(1, dt * 4);
     vrm.scene.rotation.y = next;
 
-    // Idle breathing — subtle spine + chest scale.
-    if (spine) spine.rotation.x = Math.sin(t * 1.3) * 0.012;
+    // Publish a discrete "turn bucket" to CSS so prop overlays (glasses,
+    // cup, …) can re-position themselves per-angle. Normalise to [-PI, PI]
+    // and snap to the closest of front / side-right / side-left / back.
+    let norm = ((next + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    let bucket;
+    if (Math.abs(norm) < Math.PI / 4)              bucket = 'front';
+    else if (Math.abs(Math.abs(norm) - Math.PI) < Math.PI / 4) bucket = 'back';
+    else if (norm > 0)                              bucket = 'side-right';
+    else                                            bucket = 'side-left';
+    if (container.dataset.turn !== bucket) container.dataset.turn = bucket;
+
+    // Idle breathing — subtle spine motion. Only when no pose target is
+    // driving the spine; otherwise this overwrites the target every frame
+    // and the user's hunch/lean never registers.
+    if (spine && !poseTargets.has('spine')) spine.rotation.x = Math.sin(t * 1.3) * 0.012;
 
     // Look-at target: tilt head/neck toward target relative to body.
     if (lookActive && headBone) {
@@ -826,7 +921,7 @@ function animate() {
     // Procedural walking — exaggerated step cycle so it's actually visible
     // in the small overlay window. Big leg & arm swing, visible hip bob.
     if (walkActive) {
-      walkPhase += dt * 5; // slower cadence, easier to track visually
+      walkPhase += dt * 3; // ~0.5 cycles/sec = 1 step/sec — matches a slow walk pace
       const swing = Math.sin(walkPhase) * 0.7;        // ±40° leg swing
       if (leftUpperLeg)  leftUpperLeg.rotation.x  =  swing;
       if (rightUpperLeg) rightUpperLeg.rotation.x = -swing;
@@ -975,6 +1070,33 @@ function pickLine(state) {
 
 let currentState = 'idle';
 function setState(state, opts = {}) {
+  // Master reset: every transition INTO idle is a hard reset — clears
+  // every scene leftover so the next action starts from a clean slate
+  // (no lingering laptop overlay, sunken hips from sleep, leftover pose
+  // targets from sit). clearPoseTargets() only removes the *targets* —
+  // bones keep their last-driven rotation. So we ALSO push every commonly
+  // posed bone back toward neutral via a fresh zero target.
+  if (state === 'idle') {
+    delete container.dataset.room;
+    delete container.dataset.coding;
+    hipsTargetY = 0;
+    if (typeof exitCoding === 'function') exitCoding();
+    walkActive = false;
+    // Drive bones home to their rest values. setPoseTarget with lerp 8
+    // gets them there in ~0.5 s. After 1.5 s, release the targets so the
+    // breathing idle animation can take back over.
+    setPoseTarget('leftUpperLeg',  { rx: 0, rz: 0, lerp: 8 });
+    setPoseTarget('rightUpperLeg', { rx: 0, rz: 0, lerp: 8 });
+    setPoseTarget('leftLowerLeg',  { rx: 0, lerp: 8 });
+    setPoseTarget('rightLowerLeg', { rx: 0, lerp: 8 });
+    setPoseTarget('spine',         { rx: 0, ry: 0, rz: 0, lerp: 8 });
+    setPoseTarget('head',          { rx: 0, ry: 0, rz: 0, lerp: 8 });
+    setPoseTarget('leftUpperArm',  { rx: 0, rz: REST_LEFT_UPPER_Z,  lerp: 8 });
+    setPoseTarget('rightUpperArm', { rx: 0, rz: REST_RIGHT_UPPER_Z, lerp: 8 });
+    setPoseTarget('leftLowerArm',  { ry: 0, lerp: 8 });
+    setPoseTarget('rightLowerArm', { ry: 0, lerp: 8 });
+    setTimeout(() => clearPoseTargets(), 1500);
+  }
   currentState = state;
   // Body angle hints + facial expression matching the mood.
   if (state === 'sleepy' && headBone) headBone.rotation.x = 0.5;
@@ -1177,6 +1299,19 @@ const CONTROL_HANDLERS = {
     applySkin(name);
   },
   roommate: ({ key }) => { fireRoommate(key); },
+  // Toggle a hand-held / wearable prop. Valid names: pointer, glasses,
+  // cup, headphones. `show` is a boolean (default true).
+  prop: ({ name, show }) => {
+    if (typeof name !== 'string') return;
+    const key = `prop${name.charAt(0).toUpperCase() + name.slice(1)}`;
+    if (show === false) delete container.dataset[key];
+    else container.dataset[key] = '1';
+  },
+  // Room lighting mode. Valid: on (default), dim, off.
+  lights: ({ mode }) => {
+    if (!mode || mode === 'on') delete container.dataset.lights;
+    else container.dataset.lights = mode;
+  },
 };
 
 // — Programmatic skins: pixel-level recoloring of the body texture so the

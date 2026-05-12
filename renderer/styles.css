@@ -202,10 +202,13 @@ html, body {
   opacity: 1;
   transform: translateY(0);
 }
-/* Laptop sits on the DESK in workspace mode — at desktop level, in front of her. */
+/* Laptop sits on the DESK in workspace mode. The desk SVG itself is at
+   bottom:12% with ~14% height, so the desk top surface is at ~16%. The
+   laptop SVG has its base at the bottom — sit it just above the desk
+   top. */
 .kohai-container[data-room="workspace"] .laptop {
-  bottom: 28%;
-  left: 30%;
+  bottom: 16%;
+  left: 22%;
   width: 38%;
   transform: translateX(0) translateY(0) scale(1);
 }

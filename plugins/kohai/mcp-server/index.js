@@ -147,7 +147,14 @@ ROTATION CONVENTIONS (this rig's bone bind is non-standard — these are EMPIRIC
   spine.rx <0 = leans forward (chest forward)
   upperArm.rz: arm at her side requires LEFT≈-1.3, RIGHT≈+1.3
   upperArm.rx <0 = arm swings forward; >0 = backward
-  lowerArm.ry: positive on left, negative on right = elbow bends in
+  upperArm.rz: drives the arm UP/DOWN relative to rest. Right arm uses
+               rz toward 0 or negative to raise; left arm rz toward 0 or
+               positive. (Mirror of the rest values -1.3 / +1.3.)
+  lowerArm.ry: ELBOW BEND axis (this rig's normalized bones).
+               - RIGHT arm: POSITIVE ry bends the elbow (forearm UP),
+                 e.g. ry=1.95 brings the right hand to face level.
+               - LEFT arm: NEGATIVE ry bends the elbow (mirror),
+                 e.g. ry=-1.95 brings the left hand to face level.
   hand.rx >0 = palm down
   upperLeg.rx >0 = thigh kicks FORWARD (seated); <0 = knee tucks up to chest
   lowerLeg.rx <0 = calf bends back-down (anatomical knee bend after thigh-forward)
@@ -164,7 +171,7 @@ POSE COOKBOOK — copy and adapt:
   POINT_FORWARD:  { rightUpperArm: {rx:-1.5, rz:0.4}, rightLowerArm: {ry:-0.2} }
   HANDS_UP:       { leftUpperArm: {rx:0, rz:-2.5}, rightUpperArm: {rx:0, rz:2.5} }
   ARMS_AT_SIDES:  { leftUpperArm: {rz:-1.3}, rightUpperArm: {rz:1.3} }
-  THINKING_CHIN:  { rightUpperArm: {rx:-1.4, rz:0.55}, rightLowerArm: {ry:-1.3}, rightHand: {rx:-0.5}, head: {rx:0.2, rz:-0.15} }
+  THINKING_CHIN:  { rightUpperArm: {rx:-1.0, rz:1.0}, rightLowerArm: {ry:1.95}, rightHand: {rx:-0.3}, head: {rx:0.15, ry:-0.1, rz:-0.18} }
   SHRUG:          { leftUpperArm: {rx:-0.5, rz:-1.0}, rightUpperArm: {rx:-0.5, rz:1.0}, leftLowerArm: {ry:-0.9}, rightLowerArm: {ry:0.9} }
   PEEK_FORWARD:   { spine: {rx:-0.25, ry:0.15}, head: {rx:0.3} }
   BOW:            { spine: {rx:-0.5}, head: {rx:0.45} }

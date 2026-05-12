@@ -36,8 +36,8 @@ values stay the same. So bone rotations are reliable across `kohai_turn`.
 | `hips` | `(0, 0, 0)` | (don't rotate hips — use `hipsTargetY` for vertical translation only) | — |
 | `leftUpperArm` | `(0, 0, -1.30)` (A-pose, arm hangs at side) | swings arm UP-and-back | raises arm sideways (toward T-pose) |
 | `rightUpperArm` | `(0, 0, +1.30)` (mirror) | swings arm UP-and-back | raises arm sideways (mirror) |
-| `leftLowerArm` | `(0, -0.10, 0)` | curls forearm forward at elbow (negative ⇒ "I bend my elbow") | — |
-| `rightLowerArm` | `(0, +0.10, 0)` (mirror) | same | — |
+| `leftLowerArm` | `(0, -0.10, 0)` | (this axis isn't the elbow bend — see `ry` column) | — |
+| `rightLowerArm` | `(0, +0.10, 0)` (mirror) | (same) | — |
 | `leftHand` / `rightHand` | `(0, 0, 0)` | wrist down (palm rolls forward) | — |
 | `leftUpperLeg`, `rightUpperLeg` | `(0, 0, 0)` (leg straight down) | **POSITIVE rx kicks the thigh FORWARD** (seated position, ~1.40 = horizontal); negative rx tucks the knee UP toward the chest | knee abduction (legs apart) |
 | `leftLowerLeg`, `rightLowerLeg` | `(0, 0, 0)` | **NEGATIVE rx bends the calf back at the knee** (so calf points down when thigh is forward — the only anatomically valid direction); positive rx kicks the calf forward (not anatomically valid) | — |
@@ -45,6 +45,22 @@ values stay the same. So bone rotations are reliable across `kohai_turn`.
 Worth re-reading: **POSITIVE `rx` on upper leg = thigh forward** (seated).
 Confirmed empirically against the walking cycle: knee bend during walk
 also uses POSITIVE rx on lowerLeg.
+
+### Elbow bend (empirically confirmed)
+
+The forearm bends at the elbow via **`lowerArm.ry`**, not `.rx`:
+- **Right forearm UP** (e.g. hand to face for thinking-chin):
+  `rightLowerArm: { ry: +1.95 }`
+- **Left forearm UP** (mirror):
+  `leftLowerArm: { ry: -1.95 }`
+
+Combined with upper-arm raise, this is the **proven** chin-touch combo:
+```js
+rightUpperArm: { rx: -1.0, rz: 1.0 }   // raise + slight forward
+rightLowerArm: { ry: 1.95 }            // bend elbow, forearm up
+rightHand:     { rx: -0.3 }            // wrist toward face
+head:          { rx: 0.15, ry: -0.1, rz: -0.18 }  // tilt cute
+```
 
 For a clean **floor-sit** pose:
 - `leftUpperLeg / rightUpperLeg: { rx: 1.40, rz: ±0.08 }` (thighs out)

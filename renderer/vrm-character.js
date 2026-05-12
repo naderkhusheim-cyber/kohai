@@ -267,24 +267,34 @@ function onVRMLoaded(gltf) {
     rightUpperLeg  = h.getNormalizedBoneNode('rightUpperLeg');
     leftLowerLeg   = h.getNormalizedBoneNode('leftLowerLeg');
     rightLowerLeg  = h.getNormalizedBoneNode('rightLowerLeg');
-    // RIG SANITY CHECK — dumps each leg bone's bind-pose orientation so
-    // we know empirically what axis means what. Output once per VRM load.
+    // RIG SANITY CHECK — dumps each bone's bind-pose orientation so we
+    // know empirically what axis means what. Output once per VRM load.
+    // Logs ALL THREE local axes (+X, +Y, +Z) in world space; this is
+    // what tells us "rotating around bone-local X rotates this world
+    // direction toward that world direction".
     try {
       const dump = (name, b) => {
         if (!b) return console.log('[rig]', name, 'MISSING');
         const wq = new THREE.Quaternion();
         b.getWorldQuaternion(wq);
-        const e = new THREE.Euler().setFromQuaternion(wq, 'XYZ');
-        const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(wq);
-        console.log(`[rig] ${name} local rotation:`, b.rotation.x.toFixed(2), b.rotation.y.toFixed(2), b.rotation.z.toFixed(2),
-                    'world Euler:', e.x.toFixed(2), e.y.toFixed(2), e.z.toFixed(2),
-                    'bone +Y in world:', localY.x.toFixed(2), localY.y.toFixed(2), localY.z.toFixed(2));
+        const aX = new THREE.Vector3(1, 0, 0).applyQuaternion(wq);
+        const aY = new THREE.Vector3(0, 1, 0).applyQuaternion(wq);
+        const aZ = new THREE.Vector3(0, 0, 1).applyQuaternion(wq);
+        const fmt = (v) => `(${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)})`;
+        console.log(`[rig] ${name}  +X→${fmt(aX)}  +Y→${fmt(aY)}  +Z→${fmt(aZ)}`);
       };
-      dump('leftUpperLeg', leftUpperLeg);
+      dump('hips',          hips);
+      dump('spine',         spine);
+      dump('head',          headBone);
+      dump('leftUpperArm',  leftUpperArm);
+      dump('leftLowerArm',  leftLowerArm);
+      dump('leftHand',      leftHand);
+      dump('rightUpperArm', rightUpperArm);
+      dump('rightLowerArm', rightLowerArm);
+      dump('rightHand',     rightHand);
+      dump('leftUpperLeg',  leftUpperLeg);
       dump('rightUpperLeg', rightUpperLeg);
-      dump('leftLowerLeg', leftLowerLeg);
-      dump('hips', hips);
-      dump('spine', spine);
+      dump('leftLowerLeg',  leftLowerLeg);
     } catch (e) { console.warn('[rig] dump failed:', e.message); }
   }
   applyIdlePose();

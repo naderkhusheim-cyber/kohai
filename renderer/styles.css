@@ -222,9 +222,15 @@ html, body {
 .prop {
   position: absolute;
   opacity: 0;
-  transition: opacity 0.35s ease;
+  transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.45));
 }
+/* Wearables ENTER lifted slightly from their resting position so the
+   springy transition reads as "she put them on." Resting transform is
+   restored in the active-state rules below. */
+.prop.glasses, .prop.headphones { transform: translate(-50%, -12px) scale(0.85); }
+.prop.cup { transform: translateY(12px) scale(0.85); }
+.prop.pointer { transform: rotate(-32deg) scaleY(0.6); transform-origin: bottom center; }
 /* Pointer stick — emerges from her right hand area, angled up toward the
    top-right of the canvas (where terminal code typically lives). */
 .prop.pointer {
@@ -235,11 +241,13 @@ html, body {
   transform-origin: bottom center;
   transform: rotate(-32deg);
 }
-/* Glasses — sit on her face when she's facing camera. */
+/* Glasses — sit on her face when she's facing camera. Her eyes land at
+   ~13% from top in the medium window (hair-top at ~5%, eyes at ~13%,
+   chin at ~22%). */
 .prop.glasses {
   width: 14%;
   left: 50%;
-  top: 32%;
+  top: 13%;
   transform: translateX(-50%);
 }
 /* Coffee cup — on the floor beside her. */
@@ -248,17 +256,34 @@ html, body {
   right: 18%;
   bottom: 12%;
 }
-/* Headphones — perched on her head. */
+/* Headphones — perched on her head. Top of her head is around top:8%
+   in a medium window; the headphones SVG band peaks there. */
 .prop.headphones {
   width: 22%;
   left: 50%;
-  top: 18%;
+  top: 8%;
   transform: translateX(-50%);
 }
-.kohai-container[data-prop-pointer="1"]    .prop.pointer    { opacity: 1; }
-.kohai-container[data-prop-glasses="1"]    .prop.glasses    { opacity: 1; }
-.kohai-container[data-prop-cup="1"]        .prop.cup        { opacity: 1; }
-.kohai-container[data-prop-headphones="1"] .prop.headphones { opacity: 1; }
+/* When the prop is "on", lock opacity at 1 AND restore the natural
+   resting transform (translateX(-50%) centers head-mounted ones; cup
+   sits at base; pointer fully extended at 32° angle). The springy
+   transition above does the "snap-into-place" feel. */
+.kohai-container[data-prop-pointer="1"]    .prop.pointer    {
+  opacity: 1;
+  transform: rotate(-32deg) scaleY(1);
+}
+.kohai-container[data-prop-glasses="1"]    .prop.glasses    {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+.kohai-container[data-prop-cup="1"]        .prop.cup        {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+.kohai-container[data-prop-headphones="1"] .prop.headphones {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
 
 /* — Per-angle prop overrides. The VRM canvas rotates the character in 3D
    but the CSS props are flat overlays, so they have to be re-anchored to
@@ -272,12 +297,12 @@ html, body {
    cheek; hidden entirely on back. */
 .kohai-container[data-turn="side-right"] .prop.glasses {
   left: 50%;
-  top: 22%;
+  top: 13%;
   width: 11%;
 }
 .kohai-container[data-turn="side-left"] .prop.glasses {
   left: 50%;
-  top: 22%;
+  top: 13%;
   width: 11%;
 }
 .kohai-container[data-turn="back"] .prop.glasses {
@@ -309,8 +334,10 @@ html, body {
 }
 
 /* Pointer stick — anchored to her right hand. When she turns left/right,
-   her hand crosses to the opposite screen side; flip horizontally. Hidden
-   when back-to-camera (the stick would clip into her body). */
+   her hand crosses to the opposite screen side; flip horizontally. When
+   back-to-camera, the stick OVER her shoulder is the primary use case
+   (pointing at terminal text behind her) — extend up-right from her
+   shoulder area, not hidden. */
 .kohai-container[data-turn="side-left"] .prop.pointer {
   right: auto;
   left: 28%;
@@ -318,7 +345,15 @@ html, body {
   transform-origin: bottom center;
 }
 .kohai-container[data-turn="back"] .prop.pointer {
-  opacity: 0 !important;
+  /* In back view her right hand is on the LEFT side of the canvas (mirror).
+     The stick extends up-right past her shoulder toward where the terminal
+     code is. */
+  right: auto;
+  left: 22%;
+  bottom: 38%;
+  height: 50%;
+  transform: rotate(28deg);
+  transform-origin: bottom center;
 }
 
 /* — Room lighting. Dim or off mode adds a translucent overlay and shifts

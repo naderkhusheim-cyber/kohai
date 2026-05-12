@@ -1001,6 +1001,8 @@ function animate() {
     tickExpressions(dt);
     tickLipsync();
     tickAccessories();
+    // tickProps(); // disabled — fought with the active-state CSS transforms.
+                    // Static CSS + data-turn buckets is good enough for now.
 
     // Mixer first — it writes keyframe data into the bones.
     if (mixer) mixer.update(dt);
@@ -1082,6 +1084,10 @@ function setState(state, opts = {}) {
     hipsTargetY = 0;
     if (typeof exitCoding === 'function') exitCoding();
     walkActive = false;
+    // Reset window back to medium — fullbody persists across actions
+    // otherwise and breaks prop CSS positions (glasses/headphones use
+    // canvas % which lands at wrong anatomy in a taller window).
+    if (window.kohai && window.kohai.resize) window.kohai.resize('medium');
     // Drive bones home to their rest values. setPoseTarget with lerp 8
     // gets them there in ~0.5 s. After 1.5 s, release the targets so the
     // breathing idle animation can take back over.
@@ -1529,9 +1535,12 @@ function makeAccessory(kind) {
   let mesh;
   switch (kind) {
     case 'redBow': {
-      const g = new THREE.BoxGeometry(0.18, 0.04, 0.06);
+      // Bow on the back/top of her head. Made chunkier (was 18×4×6 cm,
+      // now 22×7×8 cm) so it reads at every window size, not just medium.
+      const g = new THREE.BoxGeometry(0.22, 0.07, 0.08);
       mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xd0344a }));
-      mesh.userData.offset = new THREE.Vector3(0, 0.16, -0.02);
+      // Move it slightly higher + further back so it crests above her hair.
+      mesh.userData.offset = new THREE.Vector3(0, 0.18, -0.05);
       break;
     }
     case 'cap': {
@@ -1542,17 +1551,19 @@ function makeAccessory(kind) {
     }
     case 'bowTie': {
       // Two pinched triangles = a proper bow shape, anchored at the throat.
+      // Bumped from ±6cm to ±9cm + thicker depth so it doesn't disappear
+      // in the fullbody window or behind shirt collar fold.
       const shape = new THREE.Shape();
       shape.moveTo(0, 0);
-      shape.lineTo(0.06, 0.025);
-      shape.lineTo(0.06, -0.025);
+      shape.lineTo(0.09, 0.04);
+      shape.lineTo(0.09, -0.04);
       shape.lineTo(0, 0);
-      shape.lineTo(-0.06, 0.025);
-      shape.lineTo(-0.06, -0.025);
+      shape.lineTo(-0.09, 0.04);
+      shape.lineTo(-0.09, -0.04);
       shape.lineTo(0, 0);
-      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.012, bevelEnabled: false });
+      const g = new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
       mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x111111 }));
-      mesh.userData.offset = new THREE.Vector3(0, -0.13, 0.075); // throat, in front of body
+      mesh.userData.offset = new THREE.Vector3(0, -0.13, 0.10); // throat, further in front so shirt collar doesn't hide
       break;
     }
     case 'sleepCap': {
@@ -1674,6 +1685,63 @@ function applySkin(name) {
       mirror.userData.offset = acc.userData.offset.clone();
       mirror.userData.mirror = true;
       accessoryGroup.add(mirror);
+    }
+  }
+}
+
+// Each frame, anchor 2D SVG props (pointer/glasses/cup/headphones) to the
+// actual character bones in screen space. Before this, props were
+// positioned by static CSS % which meant the pointer "appeared on her back"
+// when she turned and the glasses floated at chest height in tall windows.
+// Now: project the relevant bone's worldPosition to 2D pixel coords via the
+// camera, then set inline left/top on each prop element so it tracks her.
+const propTargets = {
+  // SVG prop → bone to anchor to + bone-local offset (meters)
+  pointer:    { boneFn: () => rightHand,  ox: 0,    oy: 0,     oz: 0,    align: 'bottom-center' },
+  glasses:    { boneFn: () => headBone,   ox: 0,    oy: 0.02,  oz: 0.10, align: 'center' },
+  headphones: { boneFn: () => headBone,   ox: 0,    oy: 0.06,  oz: 0,    align: 'center' },
+  cup:        { boneFn: () => rightHand,  ox: 0.10, oy: -0.05, oz: 0,    align: 'top-center' },
+};
+function tickProps() {
+  if (!vrm || !camera || !canvas) return;
+  const propsRoot = document.getElementById('props');
+  if (!propsRoot) return;
+  const rect = canvas.getBoundingClientRect();
+  for (const [name, cfg] of Object.entries(propTargets)) {
+    const el = propsRoot.querySelector(`.prop.${name}`);
+    if (!el || el.style.display === 'none') continue;
+    // Skip if the container hasn't been told to show this prop — saves work.
+    if (!container.dataset[`prop${name.charAt(0).toUpperCase() + name.slice(1)}`]) continue;
+    const bone = cfg.boneFn();
+    if (!bone) continue;
+    const world = new THREE.Vector3(cfg.ox, cfg.oy, cfg.oz);
+    bone.localToWorld(world);
+    // Project to NDC then to pixel coords inside the canvas.
+    const ndc = world.clone().project(camera);
+    const x = (ndc.x * 0.5 + 0.5) * rect.width;
+    const y = (-ndc.y * 0.5 + 0.5) * rect.height;
+    // Each prop has a different anchor — match it so the bone hits the
+    // intended part of the SVG.
+    let cssLeft, cssTop;
+    if (cfg.align === 'bottom-center') { cssLeft = x; cssTop = y; el.style.transformOrigin = 'bottom center'; }
+    else if (cfg.align === 'top-center') { cssLeft = x; cssTop = y; el.style.transformOrigin = 'top center'; }
+    else /* center */ { cssLeft = x; cssTop = y; el.style.transformOrigin = 'center'; }
+    el.style.left = cssLeft + 'px';
+    el.style.top  = cssTop  + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+    // For center-aligned head props the natural CSS anchor is translateX(-50%)
+    // (already in active rule); for pointer/cup we want the SVG to grow from
+    // the anchor, so override translate to 0.
+    if (cfg.align === 'bottom-center') {
+      el.style.marginLeft = '-2.5%'; // half the pointer width
+      el.style.marginTop  = `-${el.clientHeight}px`;
+    } else if (cfg.align === 'top-center') {
+      el.style.marginLeft = `-${el.clientWidth / 2}px`;
+      el.style.marginTop  = '0px';
+    } else {
+      el.style.marginLeft = `-${el.clientWidth / 2}px`;
+      el.style.marginTop  = `-${el.clientHeight / 2}px`;
     }
   }
 }

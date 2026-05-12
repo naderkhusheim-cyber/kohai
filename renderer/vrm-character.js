@@ -1343,6 +1343,22 @@ const CONTROL_HANDLERS = {
     if (!mode || mode === 'on') delete container.dataset.lights;
     else container.dataset.lights = mode;
   },
+  // Set the room backdrop. Valid: livingroom, bedroom, workspace, off.
+  // workspace shows the chair + desk + laptop; bedroom the bed; livingroom
+  // the cushion + plant. This is what lets Claude compose a side-profile
+  // "anime girl coding at her desk" scene (need workspace backdrop +
+  // turn 90 + sit + hunch pose all composed live).
+  room: ({ name }) => {
+    if (!name || name === 'off') delete container.dataset.room;
+    else container.dataset.room = name;
+  },
+  // Toggle the laptop overlay independently of room. true shows it (over
+  // workspace its desk-mounted; over livingroom it floats — useful for
+  // "she's coding on a beanbag" vibes).
+  coding: ({ on }) => {
+    if (on === false) { if (typeof exitCoding === 'function') exitCoding(); }
+    else { if (typeof enterCoding === 'function') enterCoding(60000); }
+  },
 };
 
 // — Programmatic skins: pixel-level recoloring of the body texture so the

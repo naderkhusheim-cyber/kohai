@@ -1,7 +1,7 @@
 ---
 description: Have Kohai do anything — Claude composes the scene live (bones + props + lights), iterates against a screenshot, and adjusts until it looks right
 argument-hint: <description, e.g. "sit at her desk coding from a side angle">
-allowed-tools: ["mcp__kohai__kohai_pose", "mcp__kohai__kohai_choreograph", "mcp__kohai__kohai_turn", "mcp__kohai__kohai_walk", "mcp__kohai__kohai_say", "mcp__kohai__kohai_motion", "mcp__kohai__kohai_clear_pose", "mcp__kohai__kohai_play_animation", "mcp__kohai__kohai_prop", "mcp__kohai__kohai_lights", "mcp__kohai__kohai_skin", "mcp__kohai__kohai_size", "mcp__kohai__kohai_screenshot", "Bash"]
+allowed-tools: ["mcp__kohai__kohai_pose", "mcp__kohai__kohai_choreograph", "mcp__kohai__kohai_turn", "mcp__kohai__kohai_walk", "mcp__kohai__kohai_say", "mcp__kohai__kohai_motion", "mcp__kohai__kohai_clear_pose", "mcp__kohai__kohai_play_animation", "mcp__kohai__kohai_prop", "mcp__kohai__kohai_lights", "mcp__kohai__kohai_room", "mcp__kohai__kohai_coding", "mcp__kohai__kohai_skin", "mcp__kohai__kohai_size", "mcp__kohai__kohai_screenshot", "Bash"]
 ---
 
 The user wants Kohai to: **$ARGUMENTS**
@@ -30,6 +30,8 @@ Use `kohai_play_animation` ONLY for these. Everything else, you pose yourself.
 | `kohai_walk` | Slide window across desktop (handles leg cycle + facing direction) |
 | `kohai_size` | `small`, `medium`, `large`, `xl`, `fullbody` (tall — use for arm-up / reach) |
 | `kohai_prop` | Toggle `pointer`, `glasses`, `cup`, `headphones` |
+| `kohai_room` | Backdrop: `livingroom`, `bedroom`, `workspace`, `off`. **MUST be set BEFORE a "sitting at desk" pose** or she sits in empty space. |
+| `kohai_coding` | `{on:true}` shows the laptop; pair with `kohai_room workspace` for "coding at desk" |
 | `kohai_lights` | `on`, `dim`, `off` |
 | `kohai_skin` | Outfit: `default`, `school`, `casual`, `formal`, `sleep`, `summer`, `hacker` |
 | `kohai_motion` | Mood overlay: `idle`, `happy`, `thinking`, `error`, `sleepy`, `panic` |
@@ -102,7 +104,7 @@ Warm anime girl. Calls user **senpai**. Sprinkles Japanese sparingly: *ehehe, ya
 
 ## Recipes (starting points — always verify with screenshot)
 
-- **Sit and code, side profile**: `kohai_size fullbody` → `kohai_turn 90` → `kohai_play_animation sit` → overlay `spine:{rx:-0.4}`, `head:{rx:0.5}`, arms forward `rightUpperArm:{rx:-1.2, rz:1.0}` + mirror, `lowerArm.ry` curled inward ≈ ±1.2. Lerp 5.
+- **Sit and code, side profile (matches Flow reference)**: `kohai_size fullbody` → `kohai_turn 90` → `kohai_room workspace` (chair + desk + laptop appear) → `kohai_coding on` → `kohai_pose` with legs forward (`leftUpperLeg / rightUpperLeg rx:1.55, leftLowerLeg / rightLowerLeg rx:-1.55`), hunch (`spine rx:-0.4`), head down (`head rx:0.5`), arms forward over keyboard (`leftUpperArm rx:-1.1 rz:-1.0`, `rightUpperArm rx:-1.1 rz:1.0`, both `lowerArm.ry` curled inward ±1.2), lerp 5. Screenshot — verify chair + desk are visible.
 - **Point at top-of-terminal**: `kohai_size fullbody` → `kohai_turn 180` → `rightUpperArm:{rx:-1.0, rz:0.4, lerp:40}` → `kohai_prop pointer`.
 - **Wave**: `kohai_size fullbody` → `rightUpperArm:{rx:-1.6, rz:0.6, lerp:40}`, `rightLowerArm:{ry:-1.0, lerp:40}` → screenshot → `kohai_say "Hai senpai!"` → clear.
 - **Bow**: `spine:{rx:-0.55, lerp:35}`, `head:{rx:0.5, lerp:35}` → hold → clear.

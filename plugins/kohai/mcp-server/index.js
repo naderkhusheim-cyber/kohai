@@ -285,6 +285,30 @@ Each step can include any of: pose (bones map), clear_pose (array of names), say
     handler: async ({ mode }) => kohaiPost('lights', { mode }),
   },
   {
+    name: 'kohai_room',
+    description: 'Set Kohai\'s room backdrop. workspace = office chair behind her + wooden desk in front (use for "sitting at desk" scenes). bedroom = bed (use for sleep / lying down). livingroom = floor cushion + lamp + plant (use for casual sit-on-floor). off = clear backdrop. CRITICAL: must be set BEFORE composing a sit-at-desk pose — otherwise she sits in empty space and the scene looks wrong.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', enum: ['livingroom', 'bedroom', 'workspace', 'off'] },
+      },
+      required: ['name'],
+    },
+    handler: async ({ name }) => kohaiPost('room', { name }),
+  },
+  {
+    name: 'kohai_coding',
+    description: 'Toggle the laptop overlay. on=true shows it (desk-mounted if room=workspace, otherwise floating near her hands). Use this when she\'s coding so the laptop appears in the scene.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        on: { type: 'boolean' },
+      },
+      required: ['on'],
+    },
+    handler: async ({ on }) => kohaiPost('coding', { on }),
+  },
+  {
     name: 'kohai_screenshot',
     description: 'Capture the current Kohai window as an image. Use this AFTER setting a pose to see what she actually looks like — then iterate (adjust bones, re-screenshot, repeat) until the pose matches the user\'s intent. This is the key feedback loop: pose → see → adjust → see again. Without this you are flying blind.',
     inputSchema: { type: 'object', properties: {} },

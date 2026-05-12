@@ -113,6 +113,10 @@
     <!-- Hand-held props. Default hidden; shown when container has
          data-prop-<name>="1". Positioned to read as "in her hand" or
          "on her face" without needing actual VRM bone parenting. -->
+    <!-- Asset library mount point — kohai_asset() inserts SVGs from
+         assets/library/ into this container. Empty by default; populated
+         dynamically per scene. -->
+    <div id="library-assets" class="library-assets" aria-hidden="true"></div>
     <div id="props" class="props" aria-hidden="true">
       <!-- Pointer stick (teacher-style). Used when her arm can't reach
            the code on the screen — she "extends her reach" with this. -->

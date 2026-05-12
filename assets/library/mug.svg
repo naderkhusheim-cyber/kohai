@@ -1,0 +1,12 @@
+<svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Handle -->
+  <path d="M58 28 Q74 30 70 50 Q66 64 56 60" fill="none" stroke="#c2685a" stroke-width="6" stroke-linecap="round"/>
+  <!-- Body -->
+  <path d="M14 20 L62 20 L58 70 L18 70 Z" fill="#d97c64" stroke="#8a3a26" stroke-width="2"/>
+  <!-- Drink top -->
+  <ellipse cx="38" cy="22" rx="22" ry="5" fill="#3a2010"/>
+  <!-- Steam wisps -->
+  <path d="M28 6 Q26 12 30 14 M38 4 Q40 10 36 14 M48 6 Q46 12 50 14" fill="none" stroke="#fff" stroke-width="1.5" opacity="0.7"/>
+  <!-- Highlight -->
+  <rect x="18" y="26" width="3" height="38" rx="1" fill="#fff" opacity="0.4"/>
+</svg>

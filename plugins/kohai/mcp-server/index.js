@@ -326,6 +326,35 @@ Each step can include any of: pose (bones map), clear_pose (array of names), say
     },
   },
   {
+    name: 'kohai_asset',
+    description: 'Drop a named asset from assets/library/ into the scene at the given position. Asset definitions live in assets/library/manifest.json. Built-in names: water-bottle, mug, plush, blanket, snack. Pass { name, show:false } to remove. Each asset has a defaultPosition + defaultWidth; override with x, y, width (CSS percentages, e.g. "75%").',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name:  { type: 'string', description: 'Asset name from manifest.json (water-bottle, mug, plush, blanket, snack, …).' },
+        show:  { type: 'boolean', description: 'true = drop into scene (default), false = remove.' },
+        x:     { type: 'string', description: 'Horizontal position in canvas (CSS %). Falls back to manifest defaultPosition.x.' },
+        y:     { type: 'string', description: 'Vertical position in canvas (CSS %). Falls back to manifest defaultPosition.y.' },
+        width: { type: 'string', description: 'Asset width in canvas (CSS %). Falls back to manifest defaultWidth.' },
+      },
+      required: ['name'],
+    },
+    handler: async ({ name, show, x, y, width }) =>
+      kohaiPost('asset', { name, show: show !== false, x, y, width }),
+  },
+  {
+    name: 'kohai_personality',
+    description: 'Switch Kohai\'s active personality. Each personality lives in personalities/<name>.md and defines voice, triggers, gestures. Built-in: girlfriend, coach, maid, kohai (default). Use this when the user asks Kohai to "be my girlfriend" / "be my coach" / etc.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Personality name (girlfriend, coach, maid, kohai, …).' },
+      },
+      required: ['name'],
+    },
+    handler: async ({ name }) => kohaiPost('personality', { name }),
+  },
+  {
     name: 'kohai_play_animation',
     description: 'Play a VRM animation clip by name. Animations are loaded from assets/vrm-animations/<name>.vrma. Common names: idle, wave, celebrate, thinking, walking, bow, sit, type. This is the preferred way to give Kohai life — drop in a .vrma file once and call by name.',
     inputSchema: {

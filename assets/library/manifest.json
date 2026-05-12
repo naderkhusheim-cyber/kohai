@@ -1,0 +1,40 @@
+{
+  "_comment": "Asset library — data-driven props/furniture Claude can drop into a scene via kohai_asset. Each entry maps a logical name to an SVG file and default placement hints.",
+  "assets": {
+    "water-bottle": {
+      "file": "water-bottle.svg",
+      "kind": "prop",
+      "defaultPosition": { "x": "82%", "y": "55%" },
+      "defaultWidth": "8%",
+      "description": "Water bottle she can hold or place beside her — use for hydration reminders."
+    },
+    "mug": {
+      "file": "mug.svg",
+      "kind": "prop",
+      "defaultPosition": { "x": "80%", "y": "62%" },
+      "defaultWidth": "10%",
+      "description": "Steaming coffee/tea mug. Use for cozy late-night vibes."
+    },
+    "plush": {
+      "file": "plush.svg",
+      "kind": "prop",
+      "defaultPosition": { "x": "18%", "y": "55%" },
+      "defaultWidth": "16%",
+      "description": "Bunny plush. Use when she's cuddling, comforting herself, or sulking."
+    },
+    "blanket": {
+      "file": "blanket.svg",
+      "kind": "prop",
+      "defaultPosition": { "x": "50%", "y": "82%" },
+      "defaultWidth": "60%",
+      "description": "Folded blanket. Use when she's curled up, sleepy, or sick."
+    },
+    "snack": {
+      "file": "snack.svg",
+      "kind": "prop",
+      "defaultPosition": { "x": "75%", "y": "70%" },
+      "defaultWidth": "10%",
+      "description": "Onigiri on a tray. Use for eat/break reminders."
+    }
+  }
+}

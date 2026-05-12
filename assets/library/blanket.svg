@@ -1,0 +1,27 @@
+<svg viewBox="0 0 180 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Folded blanket -->
+  <path d="M10 60 Q30 50 60 55 Q90 60 120 50 Q150 40 170 50 L170 110 L10 110 Z" fill="#d8a8c4"/>
+  <!-- Top fold highlight -->
+  <path d="M10 60 Q30 50 60 55 Q90 60 120 50 Q150 40 170 50" fill="none" stroke="#c084a8" stroke-width="2"/>
+  <!-- Pattern stripes -->
+  <line x1="20" y1="80" x2="160" y2="78" stroke="#fff" stroke-width="2" opacity="0.5"/>
+  <line x1="20" y1="92" x2="160" y2="90" stroke="#fff" stroke-width="2" opacity="0.5"/>
+  <line x1="20" y1="104" x2="160" y2="102" stroke="#fff" stroke-width="2" opacity="0.5"/>
+  <!-- Fringe -->
+  <g stroke="#a86890" stroke-width="2">
+    <line x1="14" y1="110" x2="14" y2="118"/>
+    <line x1="26" y1="110" x2="26" y2="118"/>
+    <line x1="38" y1="110" x2="38" y2="118"/>
+    <line x1="50" y1="110" x2="50" y2="118"/>
+    <line x1="62" y1="110" x2="62" y2="118"/>
+    <line x1="74" y1="110" x2="74" y2="118"/>
+    <line x1="86" y1="110" x2="86" y2="118"/>
+    <line x1="98" y1="110" x2="98" y2="118"/>
+    <line x1="110" y1="110" x2="110" y2="118"/>
+    <line x1="122" y1="110" x2="122" y2="118"/>
+    <line x1="134" y1="110" x2="134" y2="118"/>
+    <line x1="146" y1="110" x2="146" y2="118"/>
+    <line x1="158" y1="110" x2="158" y2="118"/>
+    <line x1="170" y1="110" x2="170" y2="118"/>
+  </g>
+</svg>

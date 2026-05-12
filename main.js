@@ -327,3 +327,122 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
+// ─────────────────────────────────────────────────────────────────────
+// Terminal-pinning: track the frontmost terminal window and pin Kohai
+// to a corner of it. Makes her feel like she lives inside the terminal
+// rather than as a separate floating sidekick.
+//
+// macOS only (uses AppleScript). Opt-in via ~/.kohai/config.json
+//   { "terminalPin": true, "pinCorner": "bottom-right", "pinOffset": 12 }
+//
+// Cross-terminal: works for any app that exposes AXMain window via
+// System Events — Terminal.app, iTerm2, Ghostty, WezTerm, Warp, kitty,
+// Hyper, Alacritty, VS Code embedded terminal (when frontmost).
+const TERMINAL_APP_NAMES = new Set([
+  'Terminal', 'iTerm2', 'iTerm', 'Ghostty', 'WezTerm', 'Warp',
+  'kitty', 'Hyper', 'Alacritty', 'Tabby', 'Rio',
+  'Code', 'Code - Insiders', 'Cursor',  // editor-embedded terminals
+]);
+
+function getActiveTerminalBounds() {
+  return new Promise((resolve) => {
+    if (process.platform !== 'darwin') return resolve(null);
+    const { exec } = require('child_process');
+    const script = `
+      tell application "System Events"
+        try
+          set frontApp to first application process whose frontmost is true
+          set appName to name of frontApp
+          set termList to {"Terminal", "iTerm2", "iTerm", "Ghostty", "WezTerm", "Warp", "kitty", "Hyper", "Alacritty", "Tabby", "Rio", "Code", "Code - Insiders", "Cursor"}
+          if appName is not in termList then return ""
+          tell frontApp
+            set frontWin to first window
+            set pos to value of attribute "AXPosition" of frontWin
+            set siz to value of attribute "AXSize" of frontWin
+            return (item 1 of pos as string) & "," & (item 2 of pos as string) & "," & (item 1 of siz as string) & "," & (item 2 of siz as string) & "," & appName
+          end tell
+        on error
+          return ""
+        end try
+      end tell
+    `.replace(/'/g, "'\\''");
+    exec(`osascript -e '${script}'`, { timeout: 1200 }, (err, stdout) => {
+      if (err || !stdout) return resolve(null);
+      const line = stdout.trim();
+      if (!line) return resolve(null);
+      const parts = line.split(',');
+      if (parts.length < 4) return resolve(null);
+      const [x, y, w, h] = parts.slice(0, 4).map(Number);
+      if ([x, y, w, h].some(isNaN)) return resolve(null);
+      const appName = parts.slice(4).join(',') || null;
+      resolve({ x, y, w, h, appName });
+    });
+  });
+}
+
+let pinInterval = null;
+let pinConfig = { enabled: false, corner: 'bottom-right', offset: 12 };
+
+function startTerminalPin() {
+  if (process.platform !== 'darwin') return;       // macOS only for now
+  if (!pinConfig.enabled) return;
+  if (pinInterval) return;
+  pinInterval = setInterval(async () => {
+    if (!win || win.isDestroyed()) return;
+    const bounds = await getActiveTerminalBounds();
+    if (!bounds) return;
+    const [winW, winH] = win.getSize();
+    const o = pinConfig.offset;
+    let x, y;
+    switch (pinConfig.corner) {
+      case 'bottom-left':
+        x = Math.round(bounds.x + o);
+        y = Math.round(bounds.y + bounds.h - winH - o);
+        break;
+      case 'top-right':
+        x = Math.round(bounds.x + bounds.w - winW - o);
+        y = Math.round(bounds.y + o);
+        break;
+      case 'top-left':
+        x = Math.round(bounds.x + o);
+        y = Math.round(bounds.y + o);
+        break;
+      case 'bottom-right':
+      default:
+        x = Math.round(bounds.x + bounds.w - winW - o);
+        y = Math.round(bounds.y + bounds.h - winH - o);
+        break;
+    }
+    const clamped = clampToDisplay(x, y, winW, winH);
+    const [curX, curY] = win.getPosition();
+    if (curX !== clamped.x || curY !== clamped.y) {
+      win.setPosition(clamped.x, clamped.y);
+    }
+  }, 750);
+}
+
+function stopTerminalPin() {
+  if (pinInterval) { clearInterval(pinInterval); pinInterval = null; }
+}
+
+function loadPinConfig() {
+  try {
+    const cfgPath = path.join(require('os').homedir(), '.kohai', 'config.json');
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    if (cfg.terminalPin === true) pinConfig.enabled = true;
+    if (typeof cfg.pinCorner === 'string') pinConfig.corner = cfg.pinCorner;
+    if (typeof cfg.pinOffset === 'number') pinConfig.offset = cfg.pinOffset;
+  } catch (_) { /* default: disabled */ }
+}
+
+app.whenReady().then(() => {
+  loadPinConfig();
+  if (pinConfig.enabled) {
+    // Slight delay so the main window finishes its first paint before we
+    // start yanking it around.
+    setTimeout(startTerminalPin, 2000);
+  }
+});
+
+app.on('before-quit', stopTerminalPin);

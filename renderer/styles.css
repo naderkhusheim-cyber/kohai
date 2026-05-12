@@ -220,6 +220,18 @@ html, body {
 /* — Hand-held / wearable props. Each is hidden by default and shown when
    the kohai-container has data-prop-<name>="1". Positioned to read as if
    Kohai is holding / wearing them without needing actual bone parenting. */
+/* Asset library — dynamic SVG drops from assets/library/. Each asset
+   is a child <div data-asset="name"> positioned absolutely. Above the
+   chair/floor (z-index 0) but below hand-held props (z-index 5). */
+.library-assets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+}
+.library-asset { filter: drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
+.library-asset svg { width: 100%; height: auto; display: block; }
+
 .props { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .prop {
   position: absolute;

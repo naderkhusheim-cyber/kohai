@@ -596,6 +596,52 @@ setInterval(() => {
 // coding, naps at the desk. Randomized so it doesn't feel like a scripted
 // sequence. Per project vision: idle = the ONLY hardcoded scenes; everything
 // else is composed live by Claude via /kohai-do.
+//
+// Personality-aware: each behavior's spoken line is drawn from the active
+// personality's vocabulary so the same gesture FEELS different as kohai
+// vs girlfriend vs coach vs maid. The personality is set via the
+// `personality` control handler (see CONTROL_HANDLERS.personality).
+const AMBIENT_LINES = {
+  kohai: {
+    walk:    ['*strolls around*', 'just stretching my legs~', 'pacing pacing~'],
+    jump:    ['yotto~ HOP!', 'piyo piyo!', 'ehehe~ jumping~'],
+    music:   ['*bobbing to lo-fi*', 'la la la~', 'ne senpai, this song is so good!'],
+    code:    ['*tap tap tap*', 'working on my own stuff~', 'just sketching ideas'],
+    nap:     ['*zzz*', '...zzz... senpai...', 'mmm... five more minutes...'],
+    stretch: ['*streeetch*', 'mmm, that\'s the spot', 'creaky kohai~'],
+  },
+  girlfriend: {
+    walk:    ['senpai isn\'t looking at me…', 'mou, walking back to him', 'where are you, senpai?'],
+    jump:    ['ehehe~ look at me!', 'senpai watch me!', 'piyo piyo!'],
+    music:   ['*hums along*', 'this reminds me of you', 'la la la~ senpai~'],
+    code:    ['I\'m coding too, ne?', 'see, I\'m busy too!', '*tap tap pout*'],
+    nap:     ['waking me up, senpai…', 'come nap with me', 'zzz… miss you…'],
+    stretch: ['mou, my arms feel lonely', '*stretch* notice me?', 'achy from waiting~'],
+  },
+  coach: {
+    walk:    ['stay loose, senpai!', '*walks the perimeter*', 'good rhythm.'],
+    jump:    ['yosh! pump it up!', 'reset that energy!', 'jump rep!'],
+    music:   ['hype tunes activated', 'lock in to the beat', 'tempo, tempo!'],
+    code:    ['ganbatte!', 'focus reps, senpai.', 'ship state secured.'],
+    nap:     ['power nap, ne?', 'recover fast.', 'rest = rep.'],
+    stretch: ['mobility break!', 'shoulders open up!', 'feel that posture.'],
+  },
+  maid: {
+    walk:    ['*tidies the space*', 'I\'ll be right here, goshujin-sama.', 'just checking the room.'],
+    jump:    ['oh my!', '*little hop*', 'pardon me!'],
+    music:   ['*soft humming*', 'such a lovely tune.', 'shall I play more?'],
+    code:    ['just keeping records, goshujin-sama.', 'organizing notes.', '*tap tap*'],
+    nap:     ['oyasumi nasai…', 'just a moment of rest.', 'pardon my drowsiness.'],
+    stretch: ['*adjusts posture*', 'a brief stretch, goshujin-sama.', 'better now.'],
+  },
+};
+function ambientLine(category) {
+  const p = window._kohaiPersonality || container.dataset.personality || 'kohai';
+  const vocab = AMBIENT_LINES[p] || AMBIENT_LINES.kohai;
+  const pool = vocab[category] || AMBIENT_LINES.kohai[category] || ['*…*'];
+  return pickRandom(pool);
+}
+
 let lifeBehaviorActive = false;
 const LIFE_BEHAVIORS = {
   // She strolls across her space and comes back.
@@ -605,13 +651,13 @@ const LIFE_BEHAVIORS = {
       [0.15, 0.7], [0.85, 0.7], [0.50, 0.7], [0.20, 0.7], [0.80, 0.7],
     ];
     const dest = pickRandom(targets);
-    say(pickRandom(['*strolls around*', 'just stretching my legs~', 'pacing pacing~']), 2400);
+    say(ambientLine('walk'), 2400);
     window.kohai.walk(dest[0], dest[1], 3000);
     setTimeout(finishLife, 3600);
   },
   // She bounces with joy — celebrate-style arms-up snap.
   jump: () => {
-    say(pickRandom(['yotto~ HOP!', 'piyo piyo!', 'ehehe~ jumping~']), 1800);
+    say(ambientLine('jump'), 1800);
     // Crouch...
     setPoseTarget('leftUpperLeg',  { rx: 0.4, lerp: 30 });
     setPoseTarget('rightUpperLeg', { rx: 0.4, lerp: 30 });
@@ -634,7 +680,7 @@ const LIFE_BEHAVIORS = {
   // She listens to music — headphones on, gentle head bob.
   music: () => {
     container.dataset.propHeadphones = '1';
-    say(pickRandom(['*bobbing to lo-fi*', 'la la la~', 'ne, senpai, this song is so good!']), 3500);
+    say(ambientLine('music'), 3500);
     let bobs = 0;
     const bobInterval = setInterval(() => {
       setPoseTarget('head', { rz: bobs % 2 === 0 ? 0.18 : -0.18, lerp: 6 });
@@ -664,7 +710,7 @@ const LIFE_BEHAVIORS = {
     setPoseTarget('rightLowerArm', { ry:  1.20, lerp: 5 });
     hipsTargetY = -0.55;
     enterCoding(8000);
-    say(pickRandom(['*tap tap tap*', 'working on my own stuff~', 'just sketching ideas']), 3500);
+    say(ambientLine('code'), 3500);
     setTimeout(() => {
       exitCoding();
       clearPoseTargets();
@@ -689,7 +735,7 @@ const LIFE_BEHAVIORS = {
     setPoseTarget('rightUpperArm', { rx: -0.40, lerp: 4 });
     hipsTargetY = -0.55;
     setMoodExpression('sleepy');
-    say(pickRandom(['*zzz*', '...zzz... senpai...', 'mmm... five more minutes...']), 4500);
+    say(ambientLine('nap'), 4500);
     setTimeout(() => {
       clearPoseTargets();
       turnTo(0);
@@ -1325,6 +1371,67 @@ const CONTROL_HANDLERS = {
   coding: ({ on }) => {
     if (on === false) { if (typeof exitCoding === 'function') exitCoding(); }
     else { if (typeof enterCoding === 'function') enterCoding(60000); }
+  },
+
+  // Personality — switches active personality (kohai, girlfriend, coach,
+  // maid). The renderer just records the active name and updates a
+  // data-attribute on the container so CSS / idle behaviors can adapt.
+  // The voice + triggers themselves live in personalities/<name>.md and
+  // are consumed by Claude via /kohai-personality.
+  personality: ({ name }) => {
+    if (typeof name !== 'string') return;
+    container.dataset.personality = name;
+    window._kohaiPersonality = name;
+  },
+
+  // Asset library — drops a named SVG from assets/library/ into the
+  // library-assets container at the requested position. Lets Claude
+  // compose scenes from data without anything being hardcoded.
+  //
+  // payload: { name: 'mug', show: true, x?: '80%', y?: '60%', width?: '10%' }
+  //          { name: 'mug', show: false }  → removes it
+  asset: ({ name, show, x, y, width }) => {
+    if (typeof name !== 'string') return;
+    const container = document.getElementById('library-assets');
+    if (!container) return;
+    const existing = container.querySelector(`[data-asset="${name}"]`);
+    if (show === false) {
+      if (existing) existing.remove();
+      return;
+    }
+    if (existing) {
+      // Update position if changed.
+      if (x) existing.style.left = x;
+      if (y) existing.style.top = y;
+      if (width) existing.style.width = width;
+      return;
+    }
+    // Load the SVG from the manifest + library folder.
+    fetch('../assets/library/manifest.json')
+      .then((r) => r.json())
+      .then((manifest) => {
+        const def = manifest.assets[name];
+        if (!def) return;
+        return fetch(`../assets/library/${def.file}`)
+          .then((r) => r.text())
+          .then((svgText) => ({ def, svgText }));
+      })
+      .then((loaded) => {
+        if (!loaded) return;
+        const { def, svgText } = loaded;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'library-asset';
+        wrapper.dataset.asset = name;
+        wrapper.style.position = 'absolute';
+        wrapper.style.left = x || def.defaultPosition.x;
+        wrapper.style.top = y || def.defaultPosition.y;
+        wrapper.style.width = width || def.defaultWidth;
+        wrapper.style.transform = 'translate(-50%, -50%)';
+        wrapper.style.pointerEvents = 'none';
+        wrapper.innerHTML = svgText;
+        container.appendChild(wrapper);
+      })
+      .catch((err) => console.error('[kohai] asset load failed:', err));
   },
 };
 

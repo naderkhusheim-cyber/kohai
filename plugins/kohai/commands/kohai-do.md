@@ -105,7 +105,7 @@ Warm anime girl. Calls user **senpai**. Sprinkles Japanese sparingly: *ehehe, ya
 
 ## Recipes (starting points — always verify with screenshot)
 
-- **Sit and code, side profile (matches Flow reference)**: `kohai_size fullbody` → `kohai_turn 90` → `kohai_play_animation chair_sit` (gives you the office-chair baseline: workspace backdrop, thighs forward, calves down) → `kohai_coding on` → layer typing arms via `kohai_pose`: `leftUpperArm rx:-0.7 rz:-1.2`, `rightUpperArm rx:-0.7 rz:1.2`, `leftLowerArm ry:-1.4`, `rightLowerArm ry:1.4`, `spine rx:-0.35`, `head rx:0.45`, lerp 5. Screenshot — verify chair + desk + her elbows resting position.
+- **Sit and code, side profile (matches Flow reference)**: `kohai_size fullbody` → `kohai_turn -90` (NEGATIVE — the laptop CSS sits on canvas-LEFT so she needs to face that way) → `kohai_play_animation chair_sit` (office-chair baseline: workspace backdrop, thighs forward, calves down) → `kohai_coding on` → layer typing arms via `kohai_pose`: `leftUpperArm rx:-0.7 rz:-1.2`, `rightUpperArm rx:-0.7 rz:1.2`, `leftLowerArm ry:-1.4`, `rightLowerArm ry:1.4`, `spine rx:-0.35`, `head rx:0.45`, lerp 5. Screenshot — verify she faces the laptop, no twist between torso and legs.
 - **Point at top-of-terminal**: `kohai_size fullbody` → `kohai_turn 180` → `rightUpperArm:{rx:-1.0, rz:0.4, lerp:40}` → `kohai_prop pointer`.
 - **Wave**: `kohai_size fullbody` → `rightUpperArm:{rx:-1.6, rz:0.6, lerp:40}`, `rightLowerArm:{ry:-1.0, lerp:40}` → screenshot → `kohai_say "Hai senpai!"` → clear.
 - **Bow**: `spine:{rx:-0.55, lerp:35}`, `head:{rx:0.5, lerp:35}` → hold → clear.

@@ -704,7 +704,7 @@ const LIFE_BEHAVIORS = {
   // Sits down at her desk and codes briefly.
   deskCoding: () => {
     if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
-    turnTo(Math.PI / 2);
+    turnTo(-Math.PI / 2);
     container.dataset.room = 'workspace';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 5 });
     setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 5 });
@@ -731,7 +731,7 @@ const LIFE_BEHAVIORS = {
   // Naps at the desk on her chair.
   deskNap: () => {
     if (window.kohai && window.kohai.resize) window.kohai.resize('fullbody');
-    turnTo(Math.PI / 2);
+    turnTo(-Math.PI / 2);
     container.dataset.room = 'workspace';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
     setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });

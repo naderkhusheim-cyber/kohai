@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Compact wrapper for the Kohai control HTTP server. Usage:
+#   k say "hi senpai"
+#   k motion happy
+#   k personality girlfriend
+#   k turn 90
+#   k pose '{"rightUpperArm":{"rz":-1.7}}'              # bones only
+#   k pose '{"rightUpperArm":{"rz":-1.7}}' -0.55        # bones + hipsY
+#   k asset water-bottle rightHand                       # name + attachTo
+#   k stand                                              # play_animation stand
+#   k snap                                               # screenshot → /tmp/k.png
+set -e
+CMD="${1:-}"
+TOK="$(cat "$HOME/.kohai/token")"
+URL="http://127.0.0.1:17455"
+
+post() {
+  curl -s -X POST -H "X-Kohai-Token: $TOK" -H "Content-Type: application/json" -d "$1" "$URL/control/$2" >/dev/null
+}
+
+case "$CMD" in
+  say)         post "{\"text\":\"$2\"}" say ;;
+  motion)      post "{\"state\":\"$2\"}" motion ;;
+  personality) post "{\"name\":\"$2\"}" personality ;;
+  turn)        post "{\"degrees\":$2}" turn ;;
+  stand|walking|walking_stop)
+               post "{\"name\":\"$CMD\"}" play_animation ;;
+  pose)        # $2 = bones JSON, $3 = optional hipsY
+               if [ -n "$3" ]; then
+                 post "{\"bones\":$2,\"hipsY\":$3}" pose
+               else
+                 post "{\"bones\":$2}" pose
+               fi ;;
+  asset)       # $2 = name, $3 = attachTo (optional)
+               if [ -n "$3" ]; then
+                 post "{\"name\":\"$2\",\"show\":true,\"attachTo\":\"$3\"}" asset
+               else
+                 post "{\"name\":\"$2\",\"show\":true}" asset
+               fi ;;
+  unasset)     post "{\"name\":\"$2\",\"show\":false}" asset ;;
+  snap)        curl -s -H "X-Kohai-Token: $TOK" "$URL/control/screenshot" -o /tmp/k.png; echo /tmp/k.png ;;
+  *)           echo "Usage: k say|motion|personality|turn|pose|asset|stand|snap …" ;;
+esac

@@ -101,9 +101,7 @@ function playAnimation(name, { fadeMs = 350, loop = false } = {}) {
 // that calls setPoseTarget / clearPoseTargets on its own schedule.
 const PROCEDURAL_ANIMS = {
   sit: () => {
-    // Chair-style seated pose. Upper legs swing forward 90°, knees
-    // bend 90° so calves point straight down (no over-rotation, no
-    // splay-twist that flips the feet). Hips drop to cushion height.
+    // Floor-cushion seated pose. Legs cross-legged style.
     container.dataset.room = 'livingroom';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
     setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
@@ -114,8 +112,29 @@ const PROCEDURAL_ANIMS = {
     setPoseTarget('rightUpperArm', { rx: -0.3, rz: REST_RIGHT_UPPER_Z - 0.1, lerp: 4 });
     setPoseTarget('leftLowerArm',  { ry: -0.6, lerp: 4 });
     setPoseTarget('rightLowerArm', { ry:  0.6, lerp: 4 });
-    hipsTargetY = -0.65; // sink to cushion height (more conservative)
+    hipsTargetY = -0.65;
     say('Hai, sitting down senpai~', 2500);
+  },
+  // Office-chair seated pose. Sets the workspace backdrop (chair + desk +
+  // laptop), seats her with thighs forward + calves DOWN (not folded back
+  // like cross-legged), slight forward hunch, arms relaxed at her sides so
+  // Claude can layer typing-arm gestures on top via kohai_pose.
+  chair_sit: () => {
+    container.dataset.room = 'workspace';
+    // Thighs horizontal forward, calves hanging straight DOWN — proper
+    // chair anatomy. Setting lowerLeg rx to 0 doesn't work (calves stay
+    // along upper-leg axis); -1.55 bends them 90° to vertical.
+    setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.04, lerp: 5 });
+    setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.04, lerp: 5 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 5 });
+    setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 5 });
+    setPoseTarget('spine',         { rx: -0.15, lerp: 5 });   // slight hunch toward desk
+    setPoseTarget('head',          { rx: 0.20, lerp: 5 });    // mild head down
+    // Arms at rest (Claude composes typing arms on top of this baseline).
+    setPoseTarget('leftUpperArm',  { rx: 0, rz: REST_LEFT_UPPER_Z,  lerp: 5 });
+    setPoseTarget('rightUpperArm', { rx: 0, rz: REST_RIGHT_UPPER_Z, lerp: 5 });
+    hipsTargetY = -0.55; // seat height
+    say('At my desk, senpai~', 2500);
   },
   stand: () => {
     walkActive = false;          // stop any leg-cycle in progress

@@ -14,9 +14,10 @@ Use `kohai_play_animation` ONLY for these. Everything else, you pose yourself.
 
 | Name | Effect |
 |---|---|
-| `sit` | Sits on floor cushion, living room |
+| `sit` | Sits cross-legged on the floor cushion (livingroom backdrop) |
+| `chair_sit` | Sits in her office chair, thighs forward + calves DOWN, workspace backdrop. Use this as the baseline for "coding at desk" — then layer typing arms on top via kohai_pose. |
 | `stand` | Returns to A-pose (master reset) |
-| `sleep` | Lies on bed, bedroom |
+| `sleep` | Slumped forward on the bed, bedroom backdrop |
 | `home` | Living room backdrop, no pose change |
 | `walking` / `walking_stop` | Leg cycle toggle (usually auto via `kohai_walk`) |
 
@@ -104,7 +105,7 @@ Warm anime girl. Calls user **senpai**. Sprinkles Japanese sparingly: *ehehe, ya
 
 ## Recipes (starting points — always verify with screenshot)
 
-- **Sit and code, side profile (matches Flow reference)**: `kohai_size fullbody` → `kohai_turn 90` → `kohai_room workspace` (chair + desk + laptop appear) → `kohai_coding on` → `kohai_pose` with legs forward (`leftUpperLeg / rightUpperLeg rx:1.55, leftLowerLeg / rightLowerLeg rx:-1.55`), hunch (`spine rx:-0.4`), head down (`head rx:0.5`), arms forward over keyboard (`leftUpperArm rx:-1.1 rz:-1.0`, `rightUpperArm rx:-1.1 rz:1.0`, both `lowerArm.ry` curled inward ±1.2), lerp 5. Screenshot — verify chair + desk are visible.
+- **Sit and code, side profile (matches Flow reference)**: `kohai_size fullbody` → `kohai_turn 90` → `kohai_play_animation chair_sit` (gives you the office-chair baseline: workspace backdrop, thighs forward, calves down) → `kohai_coding on` → layer typing arms via `kohai_pose`: `leftUpperArm rx:-0.7 rz:-1.2`, `rightUpperArm rx:-0.7 rz:1.2`, `leftLowerArm ry:-1.4`, `rightLowerArm ry:1.4`, `spine rx:-0.35`, `head rx:0.45`, lerp 5. Screenshot — verify chair + desk + her elbows resting position.
 - **Point at top-of-terminal**: `kohai_size fullbody` → `kohai_turn 180` → `rightUpperArm:{rx:-1.0, rz:0.4, lerp:40}` → `kohai_prop pointer`.
 - **Wave**: `kohai_size fullbody` → `rightUpperArm:{rx:-1.6, rz:0.6, lerp:40}`, `rightLowerArm:{ry:-1.0, lerp:40}` → screenshot → `kohai_say "Hai senpai!"` → clear.
 - **Bow**: `spine:{rx:-0.55, lerp:35}`, `head:{rx:0.5, lerp:35}` → hold → clear.

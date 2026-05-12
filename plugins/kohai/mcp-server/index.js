@@ -167,7 +167,7 @@ CRITICAL — hipsY for seated/lying poses:
   Range: 0 (standing) → -0.30 (chair-sit) → -0.65 (deep floor-sit).
 
 POSE COOKBOOK — copy and adapt:
-  WAVE:           { rightUpperArm: {rx:-1.6, rz:0.6}, rightLowerArm: {ry:-1.0}, rightHand: {rx:-0.5} }
+  WAVE:           { rightUpperArm: {rz:-1.7}, rightLowerArm: {ry:0.5}, rightHand: {rz:-0.4} }
   POINT_FORWARD:  { rightUpperArm: {rx:-1.5, rz:0.4}, rightLowerArm: {ry:-0.2} }
   HANDS_UP:       { leftUpperArm: {rx:0, rz:-2.5}, rightUpperArm: {rx:0, rz:2.5} }
   ARMS_AT_SIDES:  { leftUpperArm: {rz:-1.3}, rightUpperArm: {rz:1.3} }

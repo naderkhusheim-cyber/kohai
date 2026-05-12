@@ -267,6 +267,25 @@ function onVRMLoaded(gltf) {
     rightUpperLeg  = h.getNormalizedBoneNode('rightUpperLeg');
     leftLowerLeg   = h.getNormalizedBoneNode('leftLowerLeg');
     rightLowerLeg  = h.getNormalizedBoneNode('rightLowerLeg');
+    // RIG SANITY CHECK — dumps each leg bone's bind-pose orientation so
+    // we know empirically what axis means what. Output once per VRM load.
+    try {
+      const dump = (name, b) => {
+        if (!b) return console.log('[rig]', name, 'MISSING');
+        const wq = new THREE.Quaternion();
+        b.getWorldQuaternion(wq);
+        const e = new THREE.Euler().setFromQuaternion(wq, 'XYZ');
+        const localY = new THREE.Vector3(0, 1, 0).applyQuaternion(wq);
+        console.log(`[rig] ${name} local rotation:`, b.rotation.x.toFixed(2), b.rotation.y.toFixed(2), b.rotation.z.toFixed(2),
+                    'world Euler:', e.x.toFixed(2), e.y.toFixed(2), e.z.toFixed(2),
+                    'bone +Y in world:', localY.x.toFixed(2), localY.y.toFixed(2), localY.z.toFixed(2));
+      };
+      dump('leftUpperLeg', leftUpperLeg);
+      dump('rightUpperLeg', rightUpperLeg);
+      dump('leftLowerLeg', leftLowerLeg);
+      dump('hips', hips);
+      dump('spine', spine);
+    } catch (e) { console.warn('[rig] dump failed:', e.message); }
   }
   applyIdlePose();
   mixer = new THREE.AnimationMixer(vrm.scene);
@@ -1346,7 +1365,11 @@ const CONTROL_HANDLERS = {
     const rad = typeof radians === 'number' ? radians : (typeof degrees === 'number' ? degrees * Math.PI / 180 : 0);
     turnTo(rad);
   },
-  pose:   ({ bones }) => {
+  pose:   ({ bones, hipsY }) => {
+    // hipsY is exposed so Claude can drop her hips for seated/lying
+    // poses (otherwise bent-leg + standing-height-hips = bent-knee-float,
+    // not a real sit). Range: 0 (standing) to about -0.65 (deep floor-sit).
+    if (typeof hipsY === 'number') hipsTargetY = hipsY;
     if (!bones || typeof bones !== 'object') return;
     for (const [name, rot] of Object.entries(bones)) setPoseTarget(name, rot);
   },

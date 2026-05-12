@@ -295,15 +295,13 @@ app.whenReady().then(() => {
         handleUserPrompt(data);
         return;
       }
-      // Move-to-action: slide toward center-bottom on coding tools.
-      // Skip while a walk is in progress so the two animations don't fight.
-      const codingTools = new Set(['Edit', 'MultiEdit', 'Write', 'Bash']);
-      if (eventType === 'PreToolUse' && codingTools.has(data?.tool_name) && !walkInProgress) {
-        moveToWorkPosition();
-      } else if (eventType === 'Stop') {
-        // Session settled — drift back home.
-        setTimeout(moveToRest, 1500);
-      }
+      // DISABLED: moveToWorkPosition/moveToRest used to slide her to a
+      // "work position" on Edit/Bash hooks and back to a "rest position"
+      // on Stop. With the terminal-pin loop now ACTIVELY keeping her
+      // corner-pinned to the terminal frame, these two animations fight
+      // each other every tool call (visible bug: she drifts toward
+      // center then snaps back). Kill the auto-slide; the pin loop
+      // handles positioning.
       if (
         (eventType === 'PreToolUse' ||
          eventType === 'PostToolUse' ||

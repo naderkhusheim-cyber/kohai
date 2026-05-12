@@ -39,13 +39,20 @@ values stay the same. So bone rotations are reliable across `kohai_turn`.
 | `leftLowerArm` | `(0, -0.10, 0)` | curls forearm forward at elbow (negative ⇒ "I bend my elbow") | — |
 | `rightLowerArm` | `(0, +0.10, 0)` (mirror) | same | — |
 | `leftHand` / `rightHand` | `(0, 0, 0)` | wrist down (palm rolls forward) | — |
-| `leftUpperLeg`, `rightUpperLeg` | `(0, 0, 0)` (leg straight down) | **NEGATIVE rx kicks the thigh FORWARD** (seated position); positive rx kicks back | knee abduction (legs apart) |
-| `leftLowerLeg`, `rightLowerLeg` | `(0, 0, 0)` | negative rx bends the calf forward at the knee (only direction physically possible) | — |
+| `leftUpperLeg`, `rightUpperLeg` | `(0, 0, 0)` (leg straight down) | **POSITIVE rx kicks the thigh FORWARD** (seated position, ~1.40 = horizontal); negative rx tucks the knee UP toward the chest | knee abduction (legs apart) |
+| `leftLowerLeg`, `rightLowerLeg` | `(0, 0, 0)` | **NEGATIVE rx bends the calf back at the knee** (so calf points down when thigh is forward — the only anatomically valid direction); positive rx kicks the calf forward (not anatomically valid) | — |
 
-Worth re-reading: **negative `rx` on upper leg = thigh forward**. This
-rig's leg axis is opposite to what you'd naïvely expect from "rx positive
-rotates +Y toward +Z." Confirmed against the walking cycle and empirical
-testing.
+Worth re-reading: **POSITIVE `rx` on upper leg = thigh forward** (seated).
+Confirmed empirically against the walking cycle: knee bend during walk
+also uses POSITIVE rx on lowerLeg.
+
+For a clean **floor-sit** pose:
+- `leftUpperLeg / rightUpperLeg: { rx: 1.40, rz: ±0.08 }` (thighs out)
+- `leftLowerLeg / rightLowerLeg: { rx: -1.30 }` (calves dangle back-down)
+
+For a **chair-sit** pose (thighs horizontal, calves vertical from knee):
+- Upper leg: `rx: 1.55` (full 90° forward)
+- Lower leg: `rx: -1.55` (calves return to vertical)
 
 ### Hip-anchored prop offset convention
 

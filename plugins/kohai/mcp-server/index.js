@@ -140,7 +140,7 @@ ANATOMY (14 bones, all rotations in radians):
   leftUpperLeg, rightUpperLeg   — hip-to-knee
   leftLowerLeg, rightLowerLeg   — shin
 
-ROTATION CONVENTIONS:
+ROTATION CONVENTIONS (this rig's bone bind is non-standard — these are EMPIRICAL, not VRM spec):
   head.rx >0 = looks down, <0 = looks up
   head.ry >0 = looks right, <0 = looks left
   head.rz >0 = tilts head right, <0 = tilts left
@@ -149,7 +149,15 @@ ROTATION CONVENTIONS:
   upperArm.rx <0 = arm swings forward; >0 = backward
   lowerArm.ry: positive on left, negative on right = elbow bends in
   hand.rx >0 = palm down
+  upperLeg.rx >0 = thigh kicks FORWARD (seated); <0 = knee tucks up to chest
+  lowerLeg.rx <0 = calf bends back-down (anatomical knee bend after thigh-forward)
   Each bone target accepts an optional 'lerp' (default 6, range 1-15) — higher = snaps faster.
+
+CRITICAL — hipsY for seated/lying poses:
+  Bending the legs alone leaves her at standing hip height (bent-knee-float).
+  To put her butt on the floor, pass hipsY at the TOP level of the call:
+    { hipsY: -0.55, bones: { leftUpperLeg: { rx: 1.40 }, ... } }
+  Range: 0 (standing) → -0.30 (chair-sit) → -0.65 (deep floor-sit).
 
 POSE COOKBOOK — copy and adapt:
   WAVE:           { rightUpperArm: {rx:-1.6, rz:0.6}, rightLowerArm: {ry:-1.0}, rightHand: {rx:-0.5} }
@@ -162,6 +170,8 @@ POSE COOKBOOK — copy and adapt:
   BOW:            { spine: {rx:-0.5}, head: {rx:0.45} }
   HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
+  FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }
+  CHAIR_SIT (use with hipsY: -0.30, after dropping chair via kohai_asset): { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.15} }
 
 To release a pose so the bone returns to natural animation, call kohai_clear_pose with the bone names. To clear everything, pass an empty object {}.
 
@@ -173,10 +183,14 @@ You are Kohai's body. Use this freely to express what's happening in the convers
           type: 'object',
           description: 'Map of bone name → { rx?, ry?, rz?, lerp? }. See pose cookbook in description.',
         },
+        hipsY: {
+          type: 'number',
+          description: 'Vertical hip drop in meters. 0 = standing (default), -0.30 = chair-sit, -0.55 = floor-sit, -0.65 = deep floor-sit/slumped. REQUIRED for any seated pose or she floats.',
+        },
       },
       required: ['bones'],
     },
-    handler: async ({ bones }) => kohaiPost('pose', { bones }),
+    handler: async ({ bones, hipsY }) => kohaiPost('pose', { bones, hipsY }),
   },
   {
     name: 'kohai_choreograph',

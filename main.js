@@ -193,6 +193,10 @@ function createWindow() {
   });
 
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  // CRITICAL for terminal-overlay mode: click-through so the user can still
+  // type into the terminal underneath. Without this, Kohai's window blocks
+  // every keystroke. Enabled by default; can be toggled if needed.
+  try { win.setIgnoreMouseEvents(true, { forward: true }); } catch (_) {}
   // Pick renderer based on ~/.kohai/config.json: { "renderer": "vrm" | "live2d" }
   const cfg = (() => {
     try {
@@ -382,7 +386,7 @@ function getActiveTerminalBounds() {
 }
 
 let pinInterval = null;
-let pinConfig = { enabled: false, corner: 'bottom-right', offset: 12 };
+let pinConfig = { enabled: false, mode: 'fill', corner: 'bottom-right', offset: 12 };
 
 function startTerminalPin() {
   if (process.platform !== 'darwin') return;       // macOS only for now
@@ -392,6 +396,30 @@ function startTerminalPin() {
     if (!win || win.isDestroyed()) return;
     const bounds = await getActiveTerminalBounds();
     if (!bounds) return;
+
+    // MODE: 'fill' = resize Kohai's window to MATCH the terminal exactly.
+    // She gets the whole terminal as her play space — no arm cropping,
+    // she can walk anywhere within the terminal frame, animation has
+    // room. This is what "she owns the terminal" actually means.
+    if (pinConfig.mode === 'fill') {
+      const targetX = Math.round(bounds.x);
+      const targetY = Math.round(bounds.y);
+      const targetW = Math.round(bounds.w);
+      const targetH = Math.round(bounds.h);
+      const [curX, curY] = win.getPosition();
+      const [curW, curH] = win.getSize();
+      if (curW !== targetW || curH !== targetH) {
+        win.setSize(targetW, targetH);
+        // Notify renderer so the Three.js canvas resizes too.
+        win.webContents.send('kohai:resize', { w: targetW, h: targetH });
+      }
+      if (curX !== targetX || curY !== targetY) {
+        win.setPosition(targetX, targetY);
+      }
+      return;
+    }
+
+    // MODE: 'corner' = pin to a corner at fixed size (legacy behavior).
     const [winW, winH] = win.getSize();
     const o = pinConfig.offset;
     let x, y;
@@ -419,7 +447,7 @@ function startTerminalPin() {
     if (curX !== clamped.x || curY !== clamped.y) {
       win.setPosition(clamped.x, clamped.y);
     }
-  }, 750);
+  }, 500);
 }
 
 function stopTerminalPin() {
@@ -427,13 +455,18 @@ function stopTerminalPin() {
 }
 
 function loadPinConfig() {
+  // Default: enabled in fill mode. She OWNS the terminal — no opt-in,
+  // because the cropping problem is too bad without it.
+  pinConfig.enabled = true;
+  pinConfig.mode = 'fill';
   try {
     const cfgPath = path.join(require('os').homedir(), '.kohai', 'config.json');
     const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    if (cfg.terminalPin === true) pinConfig.enabled = true;
+    if (cfg.terminalPin === false) pinConfig.enabled = false;
+    if (typeof cfg.pinMode === 'string') pinConfig.mode = cfg.pinMode;
     if (typeof cfg.pinCorner === 'string') pinConfig.corner = cfg.pinCorner;
     if (typeof cfg.pinOffset === 'number') pinConfig.offset = cfg.pinOffset;
-  } catch (_) { /* default: disabled */ }
+  } catch (_) { /* keep defaults */ }
 }
 
 app.whenReady().then(() => {

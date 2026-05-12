@@ -578,17 +578,21 @@ function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 let lastActivityAt = performance.now();
 let sessionStartedAt = performance.now();
 function noteActivity() { lastActivityAt = performance.now(); }
+// Micro-idle: after 15s of inactivity, she does small ambient gestures
+// (look around, stretch, thinking). Tight loop (3s) so she feels alive,
+// not statue-like. Was 45s threshold + 8s poll — way too long.
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
-  if (idleMs < 45000) return;
+  if (idleMs < 15000) return;
   if (scenarioActive || coding || lifeBehaviorActive) return;
   if (animations.has('idle')) {
     playAnimation('idle', { loop: true });
   } else {
     playBehavior(pickRandom(['lookAround', 'stretch', 'thinkingChin']));
   }
-  lastActivityAt = performance.now() - Math.random() * 30000;
-}, 8000);
+  // Slightly reset so micro-gestures cycle every ~10-15s.
+  lastActivityAt = performance.now() - Math.random() * 10000;
+}, 3000);
 
 // — "Kohai life" loop —
 // Every 90–180s of true idle, Kohai autonomously LIVES: walks around her
@@ -758,14 +762,17 @@ function pickLifeBehavior() {
   else pool = ['deskCoding', 'music', 'walkAround', 'deskNap'];
   return LIFE_BEHAVIORS[pickRandom(pool)];
 }
+// Big-idle: after 35s, she goes on a "life" excursion (walk around,
+// jump, music, brief desk-coding, nap). Was 90s threshold — too long
+// for testing and for users to feel she's alive.
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
-  if (idleMs < 90000) return;       // user must be idle 90s+
+  if (idleMs < 35000) return;
   if (scenarioActive || coding || walkActive || lifeBehaviorActive) return;
   lifeBehaviorActive = true;
   const fn = pickLifeBehavior();
   try { fn(); } catch (e) { console.warn('[life]', e.message); finishLife(); }
-}, 15000);
+}, 8000);
 
 // — Roommate vibes: time-aware unprompted reactions —
 // She notices when it's late, when you've been idle a long time, when you've
@@ -1016,6 +1023,7 @@ function animate() {
     tickAccessories();
     tickHandProps();
     tickBodyProps(dt);
+    tickAssetAttachments();
 
     // Mixer first — it writes keyframe data into the bones.
     if (mixer) mixer.update(dt);
@@ -1140,16 +1148,20 @@ function describeTool(data) {
   const tool = data?.tool_name || '';
   const input = data?.tool_input || {};
   const file = basenameOf(input.file_path);
+  // Architecture pivot: do NOT auto-enable coding mode (the hardcoded
+  // CSS laptop overlay). Tool-aware reactions are still allowed, but
+  // any "coding mode" visual must be composed live by Claude — not
+  // forced by the renderer because the user happened to run Bash.
   switch (tool) {
     case 'Edit': case 'MultiEdit':
-      return file ? { state: 'thinking', text: `Editing ${file}, senpai~`, coding: true } : null;
+      return file ? { state: 'thinking', text: `Editing ${file}, senpai~` } : null;
     case 'Write':
-      return file ? { state: 'thinking', text: `Writing ${file}!`, coding: true } : null;
+      return file ? { state: 'thinking', text: `Writing ${file}!` } : null;
     case 'Read':
       return file ? { state: 'thinking', text: `Reading ${file}…` } : null;
     case 'Bash': {
       const cmd = (input.command || '').split(/\s+/)[0] || 'something';
-      return { state: 'thinking', text: `Running \`${cmd}\`…`, coding: true };
+      return { state: 'thinking', text: `Running \`${cmd}\`…` };
     }
     default:
       return tool ? { state: 'thinking', text: `Hmm, ${tool}…` } : null;
@@ -1385,33 +1397,57 @@ const CONTROL_HANDLERS = {
   },
 
   // Asset library — drops a named SVG from assets/library/ into the
-  // library-assets container at the requested position. Lets Claude
-  // compose scenes from data without anything being hardcoded.
+  // library-assets container. Two modes:
   //
-  // payload: { name: 'mug', show: true, x?: '80%', y?: '60%', width?: '10%' }
-  //          { name: 'mug', show: false }  → removes it
-  asset: ({ name, show, x, y, width }) => {
+  //   1) Fixed position (default): place at x/y % of canvas
+  //   2) Bone-attached: pass attachTo: 'rightHand' | 'leftHand' | 'head' |
+  //      'rightUpperLeg' | etc. — the asset will track that bone's screen
+  //      position every frame via tickAssetAttachments()
+  //
+  // payload examples:
+  //   { name: 'water-bottle', show: true, attachTo: 'rightHand', tilt: -0.3 }
+  //   { name: 'mug', show: true }
+  //   { name: 'mug', show: false }  → remove
+  asset: ({ name, show, x, y, width, attachTo, tilt, offsetX, offsetY }) => {
     if (typeof name !== 'string') return;
-    const container = document.getElementById('library-assets');
-    if (!container) return;
-    const existing = container.querySelector(`[data-asset="${name}"]`);
+    const lib = document.getElementById('library-assets');
+    if (!lib) return;
+    const existing = lib.querySelector(`[data-asset="${name}"]`);
     if (show === false) {
       if (existing) existing.remove();
+      attachedAssets.delete(name);
       return;
     }
+    const apply = (wrapper, def) => {
+      if (attachTo) {
+        wrapper.dataset.attachTo = attachTo;
+        wrapper.style.transform = `translate(-50%, -50%) rotate(${tilt || 0}rad)`;
+        attachedAssets.set(name, {
+          el: wrapper,
+          bone: attachTo,
+          offsetX: offsetX || 0,
+          offsetY: offsetY || 0,
+        });
+      } else {
+        wrapper.style.left = x || def.defaultPosition.x;
+        wrapper.style.top = y || def.defaultPosition.y;
+        wrapper.style.transform = `translate(-50%, -50%) rotate(${tilt || 0}rad)`;
+        attachedAssets.delete(name);
+      }
+      if (width) wrapper.style.width = width;
+    };
     if (existing) {
-      // Update position if changed.
-      if (x) existing.style.left = x;
-      if (y) existing.style.top = y;
-      if (width) existing.style.width = width;
+      // Update in place.
+      fetch('../assets/library/manifest.json')
+        .then((r) => r.json())
+        .then((manifest) => apply(existing, manifest.assets[name] || {}));
       return;
     }
-    // Load the SVG from the manifest + library folder.
     fetch('../assets/library/manifest.json')
       .then((r) => r.json())
       .then((manifest) => {
         const def = manifest.assets[name];
-        if (!def) return;
+        if (!def) return null;
         return fetch(`../assets/library/${def.file}`)
           .then((r) => r.text())
           .then((svgText) => ({ def, svgText }));
@@ -1423,13 +1459,11 @@ const CONTROL_HANDLERS = {
         wrapper.className = 'library-asset';
         wrapper.dataset.asset = name;
         wrapper.style.position = 'absolute';
-        wrapper.style.left = x || def.defaultPosition.x;
-        wrapper.style.top = y || def.defaultPosition.y;
         wrapper.style.width = width || def.defaultWidth;
-        wrapper.style.transform = 'translate(-50%, -50%)';
         wrapper.style.pointerEvents = 'none';
         wrapper.innerHTML = svgText;
-        container.appendChild(wrapper);
+        lib.appendChild(wrapper);
+        apply(wrapper, def);
       })
       .catch((err) => console.error('[kohai] asset load failed:', err));
   },
@@ -1806,6 +1840,50 @@ function makeBodyProp(kind) {
   }
   return null;
 }
+// Bone-attached assets — registry + per-frame ticker. Each entry tracks
+// { el: HTMLElement, bone: string, offsetX: number, offsetY: number }.
+// Each frame we project the bone's world position to NDC, convert to
+// canvas pixel coords, and set the asset's CSS left/top so it follows
+// the bone naturally. Lets Claude compose "pick up water bottle" by
+// dropping the asset attached to rightHand + posing her arm.
+const attachedAssets = new Map();
+const _assetVec = new THREE.Vector3();
+let _assetDebugCount = 0;
+function tickAssetAttachments() {
+  if (attachedAssets.size === 0 || !vrm) return;
+  const canvas = renderer && renderer.domElement;
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  for (const [name, info] of attachedAssets.entries()) {
+    const bone = getBone(info.bone);
+    if (!bone) {
+      if (_assetDebugCount++ < 5) console.log('[asset]', name, 'bone not found:', info.bone);
+      continue;
+    }
+    bone.getWorldPosition(_assetVec);
+    const worldX = _assetVec.x, worldY = _assetVec.y, worldZ = _assetVec.z;
+    _assetVec.project(camera);
+    if (!isFinite(_assetVec.x) || !isFinite(_assetVec.y)) {
+      if (_assetDebugCount++ < 5) console.log('[asset]', name, 'NaN projection');
+      continue;
+    }
+    // CRITICAL: add rect.left/top — the canvas is flex-centered in the
+    // container, not at viewport (0,0). Without this, the asset projects
+    // to canvas-local coords but gets placed at library-assets-viewport
+    // coords (which start at 0,0). Result: asset offscreen / wrong spot.
+    const x = (_assetVec.x + 1) / 2 * rect.width  + rect.left + (info.offsetX || 0);
+    const y = (1 - _assetVec.y) / 2 * rect.height + rect.top  + (info.offsetY || 0);
+    info.el.style.left = x + 'px';
+    info.el.style.top  = y + 'px';
+    if (_assetDebugCount++ < 3) {
+      console.log('[asset]', name, 'bone world:', worldX.toFixed(2), worldY.toFixed(2), worldZ.toFixed(2),
+                  'ndc:', _assetVec.x.toFixed(2), _assetVec.y.toFixed(2),
+                  'rect:', rect.width.toFixed(0), rect.height.toFixed(0),
+                  'screen px:', x.toFixed(0), y.toFixed(0));
+    }
+  }
+}
+
 // Body props are parented to hips on creation (see makeBodyProp). The
 // bone-local transform we set there is all that's needed — three.js
 // inherits world transform automatically.

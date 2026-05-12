@@ -327,20 +327,24 @@ Each step can include any of: pose (bones map), clear_pose (array of names), say
   },
   {
     name: 'kohai_asset',
-    description: 'Drop a named asset from assets/library/ into the scene at the given position. Asset definitions live in assets/library/manifest.json. Built-in names: water-bottle, mug, plush, blanket, snack. Pass { name, show:false } to remove. Each asset has a defaultPosition + defaultWidth; override with x, y, width (CSS percentages, e.g. "75%").',
+    description: 'Drop a named asset from assets/library/ into the scene. Two modes: (a) fixed position via x/y % of canvas, or (b) BONE-ATTACHED — pass attachTo to make the asset follow that bone every frame (so she can pick up a bottle, hold a mug, etc.). Built-in names: water-bottle, mug, plush, blanket, snack. Pass { name, show:false } to remove.',
     inputSchema: {
       type: 'object',
       properties: {
-        name:  { type: 'string', description: 'Asset name from manifest.json (water-bottle, mug, plush, blanket, snack, …).' },
-        show:  { type: 'boolean', description: 'true = drop into scene (default), false = remove.' },
-        x:     { type: 'string', description: 'Horizontal position in canvas (CSS %). Falls back to manifest defaultPosition.x.' },
-        y:     { type: 'string', description: 'Vertical position in canvas (CSS %). Falls back to manifest defaultPosition.y.' },
-        width: { type: 'string', description: 'Asset width in canvas (CSS %). Falls back to manifest defaultWidth.' },
+        name:     { type: 'string', description: 'Asset name from manifest.json.' },
+        show:     { type: 'boolean', description: 'true = drop into scene (default), false = remove.' },
+        x:        { type: 'string',  description: 'Horizontal CSS % (ignored if attachTo set).' },
+        y:        { type: 'string',  description: 'Vertical CSS % (ignored if attachTo set).' },
+        width:    { type: 'string',  description: 'Asset width as CSS %.' },
+        attachTo: { type: 'string',  description: 'Bone name to attach to (rightHand, leftHand, head, etc.). When set, asset tracks that bone\'s screen position every frame.' },
+        tilt:     { type: 'number',  description: 'Rotation around the asset center in radians. Useful for tipping a bottle to "drink" or angling a held object.' },
+        offsetX:  { type: 'number',  description: 'Pixel offset from the bone\'s projected position, X axis.' },
+        offsetY:  { type: 'number',  description: 'Pixel offset from the bone\'s projected position, Y axis.' },
       },
       required: ['name'],
     },
-    handler: async ({ name, show, x, y, width }) =>
-      kohaiPost('asset', { name, show: show !== false, x, y, width }),
+    handler: async ({ name, show, x, y, width, attachTo, tilt, offsetX, offsetY }) =>
+      kohaiPost('asset', { name, show: show !== false, x, y, width, attachTo, tilt, offsetX, offsetY }),
   },
   {
     name: 'kohai_personality',

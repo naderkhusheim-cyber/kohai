@@ -144,20 +144,22 @@ const PROCEDURAL_ANIMS = {
     say('Standing up!', 2000);
   },
   sleep: () => {
-    // Bedroom appears: bed fades in, lamp dimmed-warm. She sits on the
-    // bed cross-legged with head drooped — reads as drowsy / about-to-sleep.
-    // Earlier "lying flat" attempts (hipsTargetY=-1.10) dropped her below
-    // the canvas entirely; this seated-on-bed pose stays in frame.
+    // Bedroom appears: bed fades in. She slumps forward heavily with
+    // head fully dropped — reads as "dozed off sitting up."
     container.dataset.room = 'bedroom';
-    setPoseTarget('leftUpperLeg',  { rx: 1.30, rz:  0.20, lerp: 3 });
-    setPoseTarget('rightUpperLeg', { rx: 1.30, rz: -0.20, lerp: 3 });
-    setPoseTarget('leftLowerLeg',  { rx: -1.30, lerp: 3 });
-    setPoseTarget('rightLowerLeg', { rx: -1.30, lerp: 3 });
-    setPoseTarget('spine', { rx: -0.15, lerp: 3 });    // slight slump
-    setPoseTarget('head',  { rx: 0.35, rz: 0.10, lerp: 3 }); // head droopy
-    setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 3 });
-    setPoseTarget('rightUpperArm', { rx: -0.20, lerp: 3 });
-    hipsTargetY = -0.55;  // seated on bed, in frame
+    setPoseTarget('leftUpperLeg',  { rx: 1.40, rz:  0.20, lerp: 6 });
+    setPoseTarget('rightUpperLeg', { rx: 1.40, rz: -0.20, lerp: 6 });
+    setPoseTarget('leftLowerLeg',  { rx: -1.40, lerp: 6 });
+    setPoseTarget('rightLowerLeg', { rx: -1.40, lerp: 6 });
+    setPoseTarget('spine', { rx: -0.65, lerp: 6 });        // heavy forward slump
+    setPoseTarget('head',  { rx: 0.85, rz: 0.15, lerp: 6 }); // head fully drooped
+    // Upper arms at REST (don't touch rz — default A-pose has them hanging).
+    // Curl just the forearms into her lap.
+    setPoseTarget('leftUpperArm',  { rx: -0.10, rz: REST_LEFT_UPPER_Z,  lerp: 6 });
+    setPoseTarget('rightUpperArm', { rx: -0.10, rz: REST_RIGHT_UPPER_Z, lerp: 6 });
+    setPoseTarget('leftLowerArm',  { ry: -1.30, lerp: 6 });
+    setPoseTarget('rightLowerArm', { ry:  1.30, lerp: 6 });
+    hipsTargetY = -0.60;
     setMoodExpression('sleepy');
     say('Oyasumi, senpai…', 3000);
   },
@@ -1080,9 +1082,16 @@ function setState(state, opts = {}) {
   if (state === 'idle') {
     delete container.dataset.room;
     delete container.dataset.coding;
+    delete container.dataset.propPointer;
+    delete container.dataset.propGlasses;
+    delete container.dataset.propCup;
+    delete container.dataset.propHeadphones;
     hipsTargetY = 0;
     if (typeof exitCoding === 'function') exitCoding();
     walkActive = false;
+    // Clear handheld 3D props (pointer, etc.) — they were leaking across
+    // scene transitions (the stick was still in her hand when she sat down).
+    for (const k of Array.from(handProps.keys())) clearHandProp(k);
     // Reset window back to medium — fullbody persists across actions
     // otherwise and breaks prop CSS positions (glasses/headphones use
     // canvas % which lands at wrong anatomy in a taller window).
@@ -1558,21 +1567,26 @@ function clearHandProp(name) {
 function makeHandProp(kind) {
   if (kind === 'pointer') {
     const group = new THREE.Group();
-    // Stick extends UP from her grip — cylinder along world +Y by default,
-    // grip at origin, tip at y=0.55. tickHandProps copies her hand POSITION
-    // (not rotation) so the stick stays upright in world space as she walks
-    // / raises her arm — like carrying an umbrella, the prop tilts with
-    // her arm height but doesn't gimbal with palm rotation.
+    // The rightHand BONE position is at her wrist center. Her visible
+    // closed fist sits ~5cm BELOW that. To make the stick look gripped
+    // (not floating beside her hand), shift the entire mesh DOWN by 5cm
+    // and slightly to her body-center (+x in bone-local). Grip is ~3cm
+    // below the bone, visible through her closed fingers; stick extends
+    // up past the fist.
+    const Y_GRIP = -0.05;
+    const group_base = Y_GRIP;
     const stickGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.55, 12);
-    stickGeo.translate(0, 0.275, 0);
+    stickGeo.translate(0, group_base + 0.275, 0);
     const stick = new THREE.Mesh(stickGeo, new THREE.MeshStandardMaterial({ color: 0xd8b787, roughness: 0.6 }));
     group.add(stick);
     const ballGeo = new THREE.SphereGeometry(0.025, 16, 12);
-    ballGeo.translate(0, 0.55, 0);
+    ballGeo.translate(0, group_base + 0.55, 0);
     const ball = new THREE.Mesh(ballGeo, new THREE.MeshStandardMaterial({ color: 0xff5252, roughness: 0.4 }));
     group.add(ball);
-    const gripGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.05, 12);
-    gripGeo.translate(0, 0.025, 0);
+    // Grip band — slightly thicker dark cylinder where her fingers wrap.
+    // Sits AT the bone position so it appears inside her closed fist.
+    const gripGeo = new THREE.CylinderGeometry(0.018, 0.018, 0.07, 12);
+    gripGeo.translate(0, group_base + 0.025, 0);
     const grip = new THREE.Mesh(gripGeo, new THREE.MeshStandardMaterial({ color: 0x3a2a1a, roughness: 0.7 }));
     group.add(grip);
     return group;

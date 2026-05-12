@@ -231,21 +231,21 @@ html, body {
 .prop.glasses, .prop.headphones { transform: translate(-50%, -12px) scale(0.85); }
 .prop.cup { transform: translateY(12px) scale(0.85); }
 .prop.pointer { transform: rotate(-32deg) scaleY(0.6); transform-origin: bottom center; }
-/* Pointer stick — emerges from her right hand area, angled up toward the
-   top-right of the canvas (where terminal code typically lives). */
+/* Pointer stick — emerges from her right hand. When she faces camera, her
+   right hand is on canvas LEFT. Stick angles up-right toward the upper
+   area of the canvas (where terminal code typically lives). */
 .prop.pointer {
   width: 5%;
   height: 60%;
-  right: 28%;
-  bottom: 32%;
+  left: 22%;
+  bottom: 28%;
   transform-origin: bottom center;
-  transform: rotate(-32deg);
+  transform: rotate(28deg);
 }
-/* Glasses — sit on her face when she's facing camera. Her eyes land at
-   ~13% from top in the medium window (hair-top at ~5%, eyes at ~13%,
-   chin at ~22%). */
+/* Glasses — sit on her eyes when she's facing camera. Eye-level is at
+   ~13% from top in the medium window after testing. */
 .prop.glasses {
-  width: 14%;
+  width: 11%;
   left: 50%;
   top: 13%;
   transform: translateX(-50%);
@@ -256,12 +256,13 @@ html, body {
   right: 18%;
   bottom: 12%;
 }
-/* Headphones — perched on her head. Top of her head is around top:8%
-   in a medium window; the headphones SVG band peaks there. */
+/* Headphones — perched ON her head (band crests the hair). Width 22%
+   was way too wide (covered face). Down to 14% so cups cover ears, not
+   eyes. */
 .prop.headphones {
-  width: 22%;
+  width: 14%;
   left: 50%;
-  top: 8%;
+  top: 2%;
   transform: translateX(-50%);
 }
 /* When the prop is "on", lock opacity at 1 AND restore the natural
@@ -270,7 +271,9 @@ html, body {
    transition above does the "snap-into-place" feel. */
 .kohai-container[data-prop-pointer="1"]    .prop.pointer    {
   opacity: 1;
-  transform: rotate(-32deg) scaleY(1);
+  /* Match the per-data-turn rotation. Default front view: stick goes
+     up-right from her right hand on canvas left. */
+  transform: rotate(28deg) scaleY(1);
 }
 .kohai-container[data-prop-glasses="1"]    .prop.glasses    {
   opacity: 1;
@@ -298,12 +301,12 @@ html, body {
 .kohai-container[data-turn="side-right"] .prop.glasses {
   left: 50%;
   top: 13%;
-  width: 11%;
+  width: 9%;
 }
 .kohai-container[data-turn="side-left"] .prop.glasses {
   left: 50%;
   top: 13%;
-  width: 11%;
+  width: 9%;
 }
 .kohai-container[data-turn="back"] .prop.glasses {
   opacity: 0 !important;
@@ -338,10 +341,18 @@ html, body {
    back-to-camera, the stick OVER her shoulder is the primary use case
    (pointing at terminal text behind her) — extend up-right from her
    shoulder area, not hidden. */
+/* Side-right view: she faces camera-right, so her right hand is now on
+   the canvas RIGHT. Flip the pointer to that side. */
+.kohai-container[data-turn="side-right"] .prop.pointer {
+  left: auto;
+  right: 22%;
+  transform: rotate(-28deg);
+  transform-origin: bottom center;
+}
 .kohai-container[data-turn="side-left"] .prop.pointer {
+  left: 22%;
   right: auto;
-  left: 28%;
-  transform: rotate(32deg);
+  transform: rotate(28deg);
   transform-origin: bottom center;
 }
 .kohai-container[data-turn="back"] .prop.pointer {

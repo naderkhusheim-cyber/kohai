@@ -205,7 +205,13 @@ POSE COOKBOOK — empirically validated (all bones in this rig; spine values are
   HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
   FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }
-  CHAIR_SIT (use with hipsY: -0.30, after dropping chair via kohai_asset): { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.15} }
+  CHAIR_SIT — first drop the chair backdrop and turn to side profile:
+    kohai_room({name:'workspace'}) + kohai_turn({degrees:-90})
+    Use hipsY: -0.32. Two hand variants — pick one per call (randomize so she feels alive):
+    a) Typing (hands forward on virtual keyboard):
+       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.20}, head: {rx:0.15}, leftUpperArm: {rx:-1.2, rz:-1.0}, rightUpperArm: {rx:-1.2, rz:1.0}, leftLowerArm: {ry:-1.0}, rightLowerArm: {ry:1.0} }
+    b) Hands on lap (relaxed/idle sit):
+       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.05}, leftUpperArm: {rx:-0.4, rz:-1.2}, rightUpperArm: {rx:-0.4, rz:1.2}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
 
 To release a pose so the bone returns to natural animation, call kohai_clear_pose with the bone names. To clear everything, pass an empty object {}.
 

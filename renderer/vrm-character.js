@@ -2272,5 +2272,10 @@ window.kohai.onEvent(({ type, data }) => {
 });
 window.kohai.onControl(({ cmd, payload }) => {
   const h = CONTROL_HANDLERS[cmd];
-  if (h) h(payload || {});
+  if (h) {
+    // Any external control = activity. Keeps the idle ticker from
+    // overwriting pose targets with random ambient behaviors mid-pose.
+    noteActivity();
+    h(payload || {});
+  }
 });

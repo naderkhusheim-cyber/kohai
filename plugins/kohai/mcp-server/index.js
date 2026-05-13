@@ -184,19 +184,24 @@ CRITICAL — hipsY for seated/lying poses:
     { hipsY: -0.55, bones: { leftUpperLeg: { rx: 1.40 }, ... } }
   Range: 0 (standing) → -0.30 (chair-sit) → -0.65 (deep floor-sit).
 
-POSE COOKBOOK — copy and adapt:
+POSE COOKBOOK — empirically validated (all bones in this rig; spine values are deep because this rig's bend response is sublinear):
   WAVE:           { rightUpperArm: {rz:-1.7}, rightLowerArm: {ry:0.5}, rightHand: {rz:-0.4} }
-  POINT_FORWARD:  { rightUpperArm: {rx:-1.5, rz:0.4}, rightLowerArm: {ry:-0.2} }
+  POINT_FORWARD:  { rightUpperArm: {rx:-1.2, rz:1.2}, rightLowerArm: {ry:0.0} }
+                  → also kohai_turn({degrees:-30}) for a 3/4 view; "forward" at turn=0 foreshortens the arm into the camera and reads as a stub.
   HANDS_UP:       { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7} }
   STRETCH_UP:     { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7}, head: {rx:-0.2} }
-  JUMP_APEX:      { leftUpperLeg: {rx:0}, rightUpperLeg: {rx:0}, leftLowerLeg: {rx:0}, rightLowerLeg: {rx:0}, leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7} }
+  JUMP_APEX:      { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7}, leftUpperLeg: {rx:-0.9}, rightUpperLeg: {rx:-0.9}, leftLowerLeg: {rx:-1.1}, rightLowerLeg: {rx:-1.1}, spine: {rx:-0.15} }
+                  → knees tucked toward chest = clear "cannonball" airborne read.
   ARMS_AT_SIDES:  { leftUpperArm: {rz:-1.3}, rightUpperArm: {rz:1.3} }
   THINKING_CHIN:  { rightUpperArm: {rx:-1.0, rz:1.0}, rightLowerArm: {ry:1.95}, rightHand: {rx:-0.3}, head: {rx:0.15, ry:-0.1, rz:-0.18} }
-  SHRUG:          { leftUpperArm: {rx:-0.5, rz:-1.0}, rightUpperArm: {rx:-0.5, rz:1.0}, leftLowerArm: {ry:-0.9}, rightLowerArm: {ry:0.9} }
-  PEEK_FORWARD:   { spine: {rx:-0.25, ry:0.15}, head: {rx:0.3} }
-  BOW:            { spine: {rx:-0.70}, head: {rx:0.50} }
-  SLEEPY_SLUMP:   { spine: {rx:-0.45}, head: {rx:0.55, rz:0.15} }
-  MAID_CURTSY:    { spine: {rx:-0.55}, head: {rx:0.35}, leftUpperLeg: {rx:0.30}, rightUpperLeg: {rx:0.30}, leftLowerLeg: {rx:-0.20}, rightLowerLeg: {rx:-0.20} }
+  SHRUG:          { leftUpperArm: {rx:-0.9, rz:-0.5}, rightUpperArm: {rx:-0.9, rz:0.5}, leftLowerArm: {ry:-2.0}, rightLowerArm: {ry:2.0}, head: {rx:-0.05, rz:0.10} }
+  CROSS_ARMS:     { leftUpperArm: {rx:-1.4, rz:-2.1}, rightUpperArm: {rx:-1.4, rz:2.1}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
+                  → rz must go PAST rest (|rz| > 1.3) to cross over center; rest only stops at the body's vertical axis.
+  PEEK_FORWARD:   { spine: {rx:-1.1, ry:0.40}, head: {rx:0.35, ry:-0.20} }
+  BOW:            { spine: {rx:-1.2}, head: {rx:0.45} }
+                  → spine bend in this rig is sublinear; -0.7 is barely visible, -1.2 produces a clear Japanese-style bow.
+  SLEEPY_SLUMP:   { spine: {rx:-1.1}, head: {rx:0.65, rz:0.25}, leftUpperArm: {rx:-0.3}, rightUpperArm: {rx:-0.3} }
+  MAID_CURTSY:    { spine: {rx:-1.2}, head: {rx:0.40}, leftUpperLeg: {rx:0.75}, rightUpperLeg: {rx:0.75}, leftLowerLeg: {rx:-0.70}, rightLowerLeg: {rx:-0.70}, leftUpperArm: {rx:-0.3}, rightUpperArm: {rx:-0.3} }
   HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
   FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }

@@ -1017,10 +1017,81 @@ setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
   if (idleMs < 35000) return;
   if (scenarioActive || coding || walkActive || lifeBehaviorActive) return;
+  if (activityMode === 'coding_active') return; // skip random life when actively coding
   lifeBehaviorActive = true;
   const fn = pickLifeBehavior();
   try { fn(); } catch (e) { console.warn('[life]', e.message); finishLife(); }
 }, 8000);
+
+// — Activity-driven autonomous engine —
+//
+// Tracks what the user is doing on the terminal (via Claude Code hook
+// events) and fires the appropriate canonical scene:
+//   - Coding tools fired recently → code_at_desk (sit + lap-laptop)
+//   - Long idle (no events for 5+ min) → sleep
+//   - Personality-specific reminders on a clock (e.g. girlfriend
+//     reminds senpai to drink water every hour)
+//
+// Each transition only fires once when entering the mode — we don't
+// re-fire the scene on every keystroke or every minute.
+let activityMode = 'idle'; // 'idle' | 'coding_active'
+let lastCodingToolAt = 0;
+let lastReminderAt = performance.now();
+let activePersonality = 'kohai';
+const CODING_TOOLS_SET = new Set(['Edit', 'Write', 'MultiEdit', 'Bash', 'NotebookEdit']);
+const CODING_WINDOW_MS = 60 * 1000;   // counts as actively coding for 60s after last coding tool
+const SLEEP_AFTER_IDLE_MS = 5 * 60 * 1000;
+
+// Per-personality reminder definitions. Each entry: cadence (ms),
+// scene to fire, and a line to speak. Set to null to disable.
+const PERSONALITY_REMINDERS = {
+  kohai:      { cadenceMs: 120 * 60 * 1000, scene: null,          text: 'Senpai, stretch break?' },
+  girlfriend: { cadenceMs:  60 * 60 * 1000, scene: 'drink_water', text: 'Senpai~ hydrate! I\'m watching you!' },
+  coach:      { cadenceMs:  30 * 60 * 1000, scene: null,          text: 'Crushing it senpai! Keep moving!' },
+  maid:       { cadenceMs:  90 * 60 * 1000, scene: 'drink_water', text: 'Tea time, goshujin-sama.' },
+};
+
+function noteCodingTool() {
+  lastCodingToolAt = performance.now();
+  if (activityMode !== 'coding_active') {
+    activityMode = 'coding_active';
+    // Fire code_at_desk ONLY if she's not already there. Avoids
+    // re-resetting her pose on every Bash/Edit call.
+    if (container.dataset.lastScene !== 'code_at_desk' &&
+        !scenarioActive && !lifeBehaviorActive) {
+      try { SCENES.code_at_desk.run(); } catch (e) { console.warn('[activity]', e); }
+    }
+  }
+}
+
+setInterval(() => {
+  const now = performance.now();
+  const idleMs = now - lastActivityAt;
+
+  // Exit coding_active when window expires.
+  if (activityMode === 'coding_active' && (now - lastCodingToolAt) > CODING_WINDOW_MS) {
+    activityMode = 'idle';
+  }
+
+  // Long idle → sleep scene (only once per idle period).
+  if (idleMs > SLEEP_AFTER_IDLE_MS &&
+      activityMode === 'idle' &&
+      container.dataset.lastScene !== 'sleep' &&
+      !scenarioActive && !lifeBehaviorActive && !coding) {
+    try { SCENES.sleep.run(); } catch (e) { console.warn('[activity sleep]', e); }
+  }
+
+  // Personality-driven reminder.
+  const reminder = PERSONALITY_REMINDERS[activePersonality];
+  if (reminder && (now - lastReminderAt) > reminder.cadenceMs) {
+    lastReminderAt = now;
+    if (reminder.scene && SCENES[reminder.scene] &&
+        !scenarioActive && !lifeBehaviorActive) {
+      try { SCENES[reminder.scene].run(); } catch (e) { console.warn('[reminder]', e); }
+    }
+    if (reminder.text) setTimeout(() => say(reminder.text, 4500), 1800);
+  }
+}, 15000);
 
 // — Roommate vibes: time-aware unprompted reactions —
 // She notices when it's late, when you've been idle a long time, when you've
@@ -1518,16 +1589,20 @@ const HOOK_HANDLERS = {
     const r = describeTool(data);
     if (!r) return;
     setState(r.state, { text: r.text });
-    if (r.coding) enterCoding();
-    // Behavior layer — small autonomous reaction depending on tool type.
+    // Activity-driven: any coding-class tool puts her in coding mode,
+    // which fires the canonical code_at_desk scene on entry (once).
     const tool = data?.tool_name;
+    if (CODING_TOOLS_SET.has(tool)) noteCodingTool();
+    // Behavior layer — small autonomous reaction depending on tool type.
     if (tool === 'Read' || tool === 'Grep' || tool === 'Glob') playBehavior('peek');
     else if (tool === 'WebFetch' || tool === 'WebSearch') playBehavior('thinkingChin');
     else if (tool === 'Task') playBehavior('lookAround');
   },
   PostToolUse: (data) => {
     noteActivity();
-    if (CODING_TOOLS.has(data?.tool_name)) setTimeout(exitCoding, 700);
+    // Don't tear down the canonical code_at_desk scene on every tool
+    // completion — activityMode tick (CODING_WINDOW_MS) handles that
+    // once she's been idle for a minute.
     const failed = data?.tool_response?.is_error || data?.is_error;
     if (failed) {
       setState('error', { text: 'Eh?! something broke…' });
@@ -1682,6 +1757,10 @@ const CONTROL_HANDLERS = {
     if (typeof name !== 'string') return;
     container.dataset.personality = name;
     window._kohaiPersonality = name;
+    activePersonality = name;
+    // Reset the reminder clock so switching personality doesn't
+    // instantly fire the new personality's hourly reminder.
+    lastReminderAt = performance.now();
   },
 
   // Asset library — drops a named SVG from assets/library/ into the

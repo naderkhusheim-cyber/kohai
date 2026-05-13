@@ -1022,7 +1022,12 @@ function pickLifeBehavior() {
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
   if (idleMs < 35000) return;
-  if (scenarioActive || coding || walkActive || lifeBehaviorActive) return;
+  if (scenarioActive || walkActive || lifeBehaviorActive) return;
+  // Don't gate on the legacy `coding` boolean anymore — it's a stale
+  // flag from the old enterCoding/exitCoding path and gets stuck in
+  // the true state if any timeout misses, which silently kills idle
+  // animations forever. The canonical code_at_desk SCENE handles the
+  // "she's at her desk" state now and doesn't touch this flag.
   lifeBehaviorActive = true;
   const fn = pickLifeBehavior();
   try { fn(); } catch (e) { console.warn('[life]', e.message); finishLife(); }

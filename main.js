@@ -392,6 +392,12 @@ function startTerminalPin() {
   if (pinInterval) return;
   pinInterval = setInterval(async () => {
     if (!win || win.isDestroyed()) return;
+    // CRITICAL: don't snap her back to corner mid-walk. The pin loop
+    // and walkWindowTo() were fighting every 500ms — she'd start a
+    // walkAround life-behavior, slide toward a target, then get yanked
+    // back to bottom-right by the next pin tick. Visible as "she jumps
+    // to right side or middle of the screen" mid-stroll.
+    if (walkInProgress) return;
     const bounds = await getActiveTerminalBounds();
     if (!bounds) return;
 

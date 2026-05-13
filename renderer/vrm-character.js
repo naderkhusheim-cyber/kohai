@@ -822,6 +822,24 @@ const LIFE_BEHAVIORS = {
       }, 1200);
     }, 2800);
   },
+  // Falls asleep standing in place — head droops forward, body slumps
+  // slightly, eyes close. No walking, no chair needed. Fires when
+  // user's been away long enough that "she got bored waiting."
+  standingNap: () => {
+    setMoodExpression('sleepy');
+    say(ambientLine('nap'), 4500);
+    setPoseTarget('spine',         { rx: -0.30, lerp: 3 });
+    setPoseTarget('head',          { rx: 0.55, rz: 0.10, lerp: 3 });
+    setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 4 });
+    setPoseTarget('rightUpperArm', { rx: -0.20, lerp: 4 });
+    setPoseTarget('leftLowerArm',  { ry: -0.30, lerp: 4 });
+    setPoseTarget('rightLowerArm', { ry:  0.30, lerp: 4 });
+    setTimeout(() => {
+      clearPoseTargets();
+      setMoodExpression('happy');
+      finishLife();
+    }, 7000);
+  },
   // Naps at the desk on her chair. KEEP MEDIUM SIZE.
   deskNap: () => {
     turnTo(-Math.PI / 2);
@@ -853,10 +871,13 @@ function pickLifeBehavior() {
   // Bias by time-of-day for realism.
   // Late night → naps + music. Morning → walking. Day → desk-coding mix.
   let pool;
-  if (hour >= 1 && hour < 6) pool = ['deskNap', 'deskNap', 'music', 'walkAround', 'drinkWater'];
-  else if (hour >= 6 && hour < 11) pool = ['walkAround', 'walkAround', 'jump', 'music', 'drinkWater'];
-  else if (hour >= 11 && hour < 18) pool = ['deskCoding', 'walkAround', 'music', 'jump', 'drinkWater', 'drinkWater'];
-  else pool = ['deskCoding', 'music', 'walkAround', 'deskNap', 'drinkWater'];
+  // standingNap appears in every pool — the "I got bored waiting for senpai"
+  // moment is universal. walkAround + music + drinkWater rotate in based on
+  // time of day. Pool entries appear multiple times to weight probability.
+  if (hour >= 1 && hour < 6)       pool = ['standingNap', 'deskNap', 'standingNap', 'music', 'walkAround', 'drinkWater'];
+  else if (hour >= 6 && hour < 11) pool = ['walkAround', 'walkAround', 'standingNap', 'jump', 'music', 'drinkWater'];
+  else if (hour >= 11 && hour < 18) pool = ['deskCoding', 'walkAround', 'music', 'standingNap', 'jump', 'drinkWater', 'drinkWater'];
+  else                              pool = ['deskCoding', 'music', 'walkAround', 'standingNap', 'deskNap', 'drinkWater'];
   return LIFE_BEHAVIORS[pickRandom(pool)];
 }
 // Big-idle: after 35s, she goes on a "life" excursion (walk around,

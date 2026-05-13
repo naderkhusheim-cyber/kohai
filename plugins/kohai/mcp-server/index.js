@@ -206,7 +206,11 @@ POSE COOKBOOK — empirically validated (all bones in this rig; spine values are
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
   FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }
   CHAIR_SIT — first drop the chair backdrop and turn to side profile:
-    kohai_room({name:'workspace'}) + kohai_turn({degrees:-90})
+    kohai_room({name:'workspace'}) + kohai_turn({degrees:90})
+    NB: degrees MUST be +90 (not -90). The chair SVG's backrest renders
+    canvas-left and the seat extends canvas-right; +90 faces her camera-
+    right so her back lands against the backrest. With -90 she ends up
+    facing INTO the backrest instead of away from it.
     Use hipsY: -0.32. Two hand variants — pick one per call (randomize so she feels alive):
     a) Typing (hands forward on virtual keyboard):
        { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.20}, head: {rx:0.15}, leftUpperArm: {rx:-1.2, rz:-1.0}, rightUpperArm: {rx:-1.2, rz:1.0}, leftLowerArm: {ry:-1.0}, rightLowerArm: {ry:1.0} }

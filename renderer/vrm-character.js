@@ -1013,11 +1013,16 @@ function pickLifeBehavior() {
 // Big-idle: after 35s, she goes on a "life" excursion (walk around,
 // jump, music, brief desk-coding, nap). Was 90s threshold — too long
 // for testing and for users to feel she's alive.
+//
+// Idle is measured against actual human inactivity (lastActivityAt),
+// NOT activityMode — so even during a long Claude coding burst, if
+// there's been no NEW tool for 35s, life behaviors are allowed. The
+// previous gate on activityMode='coding_active' meant she froze for
+// minutes any time Claude was busy, defeating the "she's alive" feel.
 setInterval(() => {
   const idleMs = performance.now() - lastActivityAt;
   if (idleMs < 35000) return;
   if (scenarioActive || coding || walkActive || lifeBehaviorActive) return;
-  if (activityMode === 'coding_active') return; // skip random life when actively coding
   lifeBehaviorActive = true;
   const fn = pickLifeBehavior();
   try { fn(); } catch (e) { console.warn('[life]', e.message); finishLife(); }
@@ -1039,7 +1044,7 @@ let lastCodingToolAt = 0;
 let lastReminderAt = performance.now();
 let activePersonality = 'kohai';
 const CODING_TOOLS_SET = new Set(['Edit', 'Write', 'MultiEdit', 'Bash', 'NotebookEdit']);
-const CODING_WINDOW_MS = 60 * 1000;   // counts as actively coding for 60s after last coding tool
+const CODING_WINDOW_MS = 30 * 1000;   // counts as actively coding for 30s after last coding tool
 const SLEEP_AFTER_IDLE_MS = 5 * 60 * 1000;
 
 // Per-personality reminder definitions. Each entry: cadence (ms),
@@ -1068,9 +1073,16 @@ setInterval(() => {
   const now = performance.now();
   const idleMs = now - lastActivityAt;
 
-  // Exit coding_active when window expires.
+  // Exit coding_active when window expires + return her to neutral
+  // standing pose so she doesn't get stranded in the code_at_desk pose
+  // with no laptop/chair around her.
   if (activityMode === 'coding_active' && (now - lastCodingToolAt) > CODING_WINDOW_MS) {
     activityMode = 'idle';
+    if (container.dataset.lastScene === 'code_at_desk' &&
+        !scenarioActive && !lifeBehaviorActive) {
+      try { PROCEDURAL_ANIMS.stand(); container.dataset.lastScene = ''; }
+      catch (e) { console.warn('[activity exit]', e); }
+    }
   }
 
   // Long idle → sleep scene (only once per idle period).

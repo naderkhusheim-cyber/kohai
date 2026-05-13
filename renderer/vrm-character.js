@@ -1027,7 +1027,10 @@ function animate() {
     if (spine && !poseTargets.has('spine')) spine.rotation.x = Math.sin(t * 1.3) * 0.012;
 
     // Look-at target: tilt head/neck toward target relative to body.
-    if (lookActive && headBone) {
+    // Skip when a pose target is driving the head — otherwise lookAt
+    // lerps head.x toward 0 every frame and prevents bow/sleepy/curtsy
+    // from settling at their head-down values.
+    if (lookActive && headBone && !poseTargets.has('head')) {
       const local = headBone.parent.worldToLocal(lookTarget.clone());
       const dx = THREE.MathUtils.clamp(local.x * 0.3, -0.6, 0.6);
       const dy = THREE.MathUtils.clamp(-local.y * 0.2, -0.4, 0.4);

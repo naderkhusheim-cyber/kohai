@@ -177,6 +177,96 @@ const PROCEDURAL_ANIMS = {
   },
 };
 
+// — SCENES registry —
+//
+// Hand-tuned, canonical scene scripts. Each fires DIRECTLY without
+// asking Claude to compose live — when the user types `/kohai sit` or
+// `/kohai code` we look the request up here first and run the exact
+// proven sequence. Claude only gets called when no scene matches.
+//
+// Each entry is { keywords: [string], run: async () => void }. Add a
+// new scene by appending an entry. Keywords are matched case-insensitive
+// against the user's free-text request.
+const SCENES = {
+  code_at_desk: {
+    keywords: ['code', 'coding', 'sit', 'chair', 'desk', 'laptop', 'work', 'typing'],
+    run: async () => {
+      // Reset cleanly so we don't fight prior pose targets. Wait LONG
+      // enough for stand's delayed clearPoseTargets to fire (1300ms),
+      // otherwise it wipes our new targets after we set them.
+      PROCEDURAL_ANIMS.stand();
+      await sleep(1500);
+      container.dataset.room = 'workspace';
+      container.style.setProperty('--body-turn', '45deg');
+      turnTo(45 * Math.PI / 180);
+      await sleep(300);
+      // Perfected chair_sit + lap-typing arm pose (legs straight out
+      // forward, spine slight forward bend, arms curl down onto lap).
+      setPoseTarget('leftUpperLeg',  { rx: -1.55, lerp: 5 });
+      setPoseTarget('rightUpperLeg', { rx: -1.55, lerp: 5 });
+      setPoseTarget('leftLowerLeg',  { rx:  0,    lerp: 5 });
+      setPoseTarget('rightLowerLeg', { rx:  0,    lerp: 5 });
+      setPoseTarget('spine',         { rx:  0.18, lerp: 5 });
+      setPoseTarget('head',          { rx:  0.32, lerp: 5 });
+      setPoseTarget('leftUpperArm',  { rx: -0.35, rz: -1.05, lerp: 5 });
+      setPoseTarget('rightUpperArm', { rx: -0.35, rz:  1.05, lerp: 5 });
+      setPoseTarget('leftLowerArm',  { rx:  0.4,  ry: -1.05, lerp: 5 });
+      setPoseTarget('rightLowerArm', { rx:  0.4,  ry:  1.05, lerp: 5 });
+      setPoseTarget('leftHand',      { rx:  0.2,  lerp: 5 });
+      setPoseTarget('rightHand',     { rx:  0.2,  lerp: 5 });
+      hipsTargetY = -0.18;
+      await sleep(250);
+      // Spawn the 3D laptop on her lap via the body_prop pipeline
+      // (NOT enterCoding — that has its own arm animation that fights
+      // the chair_sit arm targets).
+      if (hips && !bodyProps.has('laptop')) {
+        const lap = makeBodyProp('laptop');
+        if (lap) { lap.position.set(0, -0.06, 0.18); hips.add(lap); bodyProps.set('laptop', lap); }
+      }
+      say('okay, coding~', 3500);
+    },
+  },
+  sleep: {
+    keywords: ['sleep', 'nap', 'tired', 'rest'],
+    run: async () => {
+      PROCEDURAL_ANIMS.stand();
+      await sleep(1500);
+      // Curl forward, head tilt, eyes will close from idle blink loop.
+      setPoseTarget('spine', { rx: 0.6,  lerp: 5 });
+      setPoseTarget('head',  { rx: 0.5,  rz: 0.25, lerp: 5 });
+      setPoseTarget('leftUpperArm',  { rx: -0.3, lerp: 5 });
+      setPoseTarget('rightUpperArm', { rx: -0.3, lerp: 5 });
+      try { CONTROL_HANDLERS.lights({ mode: 'off' }); } catch (_) {}
+      say('nemui... zzz', 3000);
+    },
+  },
+  wave: {
+    keywords: ['wave', 'hi', 'hello', 'hey'],
+    run: async () => {
+      PROCEDURAL_ANIMS.stand();
+      await sleep(1500);
+      setPoseTarget('rightUpperArm', { rx: -0.3, rz: -0.7, lerp: 10 });
+      setPoseTarget('rightLowerArm', { ry:  1.6, lerp: 10 });
+      setPoseTarget('rightHand',     { rz: -0.4, lerp: 10 });
+      say('hi senpai~', 2500);
+    },
+  },
+  drink_water: {
+    keywords: ['drink', 'water', 'thirsty', 'hydrate'],
+    run: async () => {
+      PROCEDURAL_ANIMS.stand();
+      await sleep(1500);
+      try { CONTROL_HANDLERS.asset({ name: 'water-bottle', show: true, attachTo: 'rightHand', tilt: -0.3 }); } catch (_) {}
+      setPoseTarget('rightUpperArm', { rx: -1.6, rz:  1.30, lerp: 10 });
+      setPoseTarget('rightLowerArm', { ry:  0.3, lerp: 10 });
+      setPoseTarget('head',          { rx: -0.05, lerp: 10 });
+      say('mizu daijoubu~', 2500);
+    },
+  },
+};
+
+function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
 function loadAnimationFiles(vrm, names) {
   return Promise.all(names.map((name) => new Promise((resolve) => {
     const url = `../assets/vrm-animations/${name}.vrma`;
@@ -1554,6 +1644,18 @@ const CONTROL_HANDLERS = {
   coding: ({ on }) => {
     if (on === false) { if (typeof exitCoding === 'function') exitCoding(); }
     else { if (typeof enterCoding === 'function') enterCoding(60000); }
+  },
+
+  // scene — fire a canonical scene by NAME. Matching from user text
+  // happens server-side via scenes-index.js + bin/k scene; the renderer
+  // only runs the matched scene's prebuilt sequence.
+  scene: ({ name }) => {
+    if (name && SCENES[name]) {
+      container.dataset.lastScene = name;
+      SCENES[name].run().catch((e) => console.error('[scene]', name, e));
+    } else {
+      console.log('[scene] unknown scene name:', name);
+    }
   },
 
   // body_prop — spawn or remove a 3D prop parented to a body bone, WITHOUT

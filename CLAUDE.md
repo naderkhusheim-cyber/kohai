@@ -62,9 +62,13 @@ visible bash noise.
 
 ## Hard rules
 
-- Never re-introduce hardcoded scene recipes (`chair_sit`, `sit`,
-  `sleep`, `code_at_desk`). They were intentionally deleted; compose
-  live from `docs/anatomy.md`.
+- Canonical scenes live in `renderer/vrm-character.js` (`SCENES`) +
+  `scenes-index.js` (keyword triggers). When the user asks for a
+  registered scene (e.g. "sit", "code", "drink water"), fire it via
+  `bin/k scene "<text>"` — DO NOT recompose from anatomy. Live
+  composition is only the fallback when `bin/k scene` prints
+  `NO-MATCH`. If you DO compose a new scene live and the user likes
+  it, add an entry to `SCENES` so it becomes canonical.
 - The two reliable invariants: `kohai_play_animation stand` always
   resets her to A-pose; `kohai_pose { bones: { name: null } }`
   releases a single bone back to idle.

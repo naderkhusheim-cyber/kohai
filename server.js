@@ -3,12 +3,13 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const { matchScene, SCENES_INDEX } = require('./scenes-index');
 
 const KOHAI_DIR = path.join(os.homedir(), '.kohai');
 const TOKEN_PATH = path.join(KOHAI_DIR, 'token');
 const PORT = 17455;
 
-const VALID_CONTROLS = ['say', 'motion', 'size', 'position', 'hide', 'show', 'walk', 'turn', 'pose', 'clear_pose', 'play_animation', 'skin', 'roommate', 'prop', 'lights', 'room', 'coding', 'asset', 'personality', 'body_prop'];
+const VALID_CONTROLS = ['say', 'motion', 'size', 'position', 'hide', 'show', 'walk', 'turn', 'pose', 'clear_pose', 'play_animation', 'skin', 'roommate', 'prop', 'lights', 'room', 'coding', 'asset', 'personality', 'body_prop', 'scene'];
 
 function getOrCreateToken() {
   fs.mkdirSync(KOHAI_DIR, { recursive: true });
@@ -54,6 +55,18 @@ module.exports = function startServer({ onEvent, onControl, onCapture }) {
   });
 
   server.get('/health', (_req, res) => res.json({ ok: true, token_path: TOKEN_PATH }));
+
+  // Scene lookup — server-side keyword match against the canonical
+  // scene registry. Returns { matched: <name> | null }. Used by bin/k
+  // and the /kohai-do skill to decide whether a request can be
+  // served by a hand-tuned scene (instant, always correct) or has to
+  // fall back to live composition by Claude.
+  server.get('/scene/match', (req, res) => {
+    if (req.headers['x-kohai-token'] !== token) return res.status(401).end();
+    const text = String(req.query.text || '');
+    const matched = matchScene(text);
+    res.json({ matched, scenes: Object.keys(SCENES_INDEX) });
+  });
 
   server.listen(PORT, '127.0.0.1', () => {
     console.log(`Kohai server listening on 127.0.0.1:${PORT}`);

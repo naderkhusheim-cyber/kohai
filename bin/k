@@ -38,6 +38,26 @@ case "$CMD" in
                  post "{\"name\":\"$2\",\"show\":true}" asset
                fi ;;
   unasset)     post "{\"name\":\"$2\",\"show\":false}" asset ;;
+  scene)       # $2... = scene name OR free-text request. Looks up a
+               # match against the registered scene library (server-side
+               # match), fires it if found, and prints
+               #   MATCHED:<name>  (one was fired)
+               #   NO-MATCH        (fall back to live composition)
+               # so the caller can branch.
+               shift
+               TEXT="$*"
+               SAFE="$(printf '%s' "$TEXT" | sed 's/"/\\"/g')"
+               # urlencode the text for the GET query (basic — handles
+               # spaces; user text is short).
+               ENC="$(printf '%s' "$TEXT" | python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.stdin.read()))' 2>/dev/null || printf '%s' "$TEXT" | sed 's/ /%20/g')"
+               RESP="$(curl -s -H "X-Kohai-Token: $TOK" "$URL/scene/match?text=$ENC")"
+               NAME="$(printf '%s' "$RESP" | python3 -c 'import sys,json;print(json.loads(sys.stdin.read()).get("matched") or "")' 2>/dev/null)"
+               if [ -n "$NAME" ]; then
+                 post "{\"name\":\"$NAME\"}" scene
+                 echo "MATCHED:$NAME"
+               else
+                 echo "NO-MATCH"
+               fi ;;
   snap)        curl -s -H "X-Kohai-Token: $TOK" "$URL/control/screenshot" -o /tmp/k.png; echo /tmp/k.png ;;
-  *)           echo "Usage: k say|motion|personality|turn|pose|asset|stand|snap …" ;;
+  *)           echo "Usage: k say|motion|personality|turn|pose|asset|stand|scene|snap …" ;;
 esac

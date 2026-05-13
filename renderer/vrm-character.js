@@ -515,12 +515,23 @@ function enterCoding() {
   coding = true;
   container.dataset.coding = '1';
   if (!keystrokeInterval) keystrokeInterval = setInterval(spawnKeystroke, 220);
+  // Spawn 3D laptop on her lap, parented to the hips bone so it tracks
+  // her body. Position: ~6cm below hip pivot, 18cm forward toward knees.
+  if (hips && !bodyProps.has('laptop')) {
+    const laptop = makeBodyProp('laptop');
+    if (laptop) {
+      laptop.position.set(0, -0.06, 0.18);
+      hips.add(laptop);
+      bodyProps.set('laptop', laptop);
+    }
+  }
 }
 function exitCoding() {
   coding = false;
   delete container.dataset.coding;
   if (keystrokeInterval) { clearInterval(keystrokeInterval); keystrokeInterval = null; }
   if (keystrokesEl) keystrokesEl.innerHTML = '';
+  clearBodyProp('laptop');
 }
 
 // — Walking: procedural step cycle on the legs while hips bob up & down.
@@ -1528,6 +1539,21 @@ const CONTROL_HANDLERS = {
   coding: ({ on }) => {
     if (on === false) { if (typeof exitCoding === 'function') exitCoding(); }
     else { if (typeof enterCoding === 'function') enterCoding(60000); }
+  },
+
+  // body_prop — spawn or remove a 3D prop parented to a body bone, WITHOUT
+  // entering coding-mode arm animation. Lets Claude compose chair_sit +
+  // lap_laptop using their own arm-pose targets without the coding tick
+  // overriding them.
+  body_prop: ({ name, show }) => {
+    if (!name) return;
+    if (show === false) { clearBodyProp(name); return; }
+    if (!hips || bodyProps.has(name)) return;
+    const prop = makeBodyProp(name);
+    if (!prop) return;
+    if (name === 'laptop') prop.position.set(0, -0.06, 0.18);
+    hips.add(prop);
+    bodyProps.set(name, prop);
   },
 
   // Personality — switches active personality (kohai, girlfriend, coach,

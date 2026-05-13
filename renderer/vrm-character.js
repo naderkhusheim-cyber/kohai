@@ -139,6 +139,15 @@ const PROCEDURAL_ANIMS = {
     delete container.dataset.propGlasses;
     delete container.dataset.propCup;
     delete container.dataset.propHeadphones;
+    // Clear any 3D body-mounted props (lap laptop, etc.) so she doesn't
+    // stand up with a laptop floating on her hips.
+    for (const k of Array.from(bodyProps.keys())) clearBodyProp(k);
+    // Always return to facing the camera (turn=0) when she stands up,
+    // and reset the chair's CSS rotation variable. Otherwise after a
+    // scenario that left her at +90° / +180° she keeps her back to the
+    // user, which reads as "she's still doing the task".
+    turnTo(0);
+    container.style.setProperty('--body-turn', '0deg');
     // Once she's fully stood up, release the leg/spine targets so
     // future motions aren't fighting our zero-target.
     setTimeout(() => clearPoseTargets([

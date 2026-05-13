@@ -1463,6 +1463,12 @@ const CONTROL_HANDLERS = {
   turn:   ({ degrees, radians }) => {
     const rad = typeof radians === 'number' ? radians : (typeof degrees === 'number' ? degrees * Math.PI / 180 : 0);
     turnTo(rad);
+    // Expose the turn in degrees on the container so the chair backdrop
+    // (and any other side-profile prop) can CSS-rotate to match her body
+    // angle — without this, she rotates in front of a static chair drawn
+    // in side-profile, which reads as "chair facing the wrong way".
+    const deg = typeof degrees === 'number' ? degrees : (rad * 180 / Math.PI);
+    container.style.setProperty('--body-turn', `${deg}deg`);
   },
   pose:   ({ bones, hipsY }) => {
     // hipsY is exposed so Claude can drop her hips for seated/lying

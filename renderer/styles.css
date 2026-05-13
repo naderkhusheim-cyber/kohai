@@ -205,10 +205,21 @@ html, body {
      and doesn't extend past her right side. translateX(-65%) instead of
      -50% pushes the chair ~15% further left = her back is properly
      against the backrest, not embedded in it. Width 70% (was 80%) keeps
-     the chair from dwarfing her tiny body. */
+     the chair from dwarfing her tiny body.
+
+     The CSS variable --body-turn is set by the turn handler in radians-
+     to-degrees form. The chair SVG is drawn in pure side-profile (her
+     body at +90°), so we subtract 90° from her turn to get the rotation
+     the chair needs to LOOK like it's seen from the same angle. With
+     perspective applied, the chair fakes a 3D rotation that tracks her. */
   width: 70%;
   left: 70%;
-  transform: translateX(-65%) translateY(0);
+  transform-origin: 50% 70%;
+  transform:
+    translateX(-65%)
+    translateY(0)
+    perspective(900px)
+    rotateY(calc(var(--body-turn, 90deg) - 90deg));
 }
 /* Workspace is INTENTIONALLY minimal — chair only. No lamp, no plant,
    no floor. The 3D laptop on her lap is the only thing besides her body

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kohai — anime companion for Claude Code</title>
+  <meta name="description" content="A desktop anime companion that lives on your terminal while you use Claude Code. Reacts to your work, runs idle ambient behaviors, drinks water, points at code. $4.99 one-time, one device.">
+  <meta property="og:title" content="Kohai — anime companion for Claude Code">
+  <meta property="og:description" content="A desktop anime companion that lives on your terminal while you use Claude Code. $4.99 one-time, one device.">
+  <meta property="og:image" content="https://naderkhusheim-cyber.github.io/kohai/assets/marketing/05-wave.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --bg-2: #14171f;
+      --fg: #e8e6e0;
+      --fg-dim: #98959a;
+      --accent: #f5b3a0;
+      --accent-2: #b58cb5;
+      --line: #2a2d36;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg); color: var(--fg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-2); }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 28px; }
+    nav { padding: 24px 0; display: flex; justify-content: space-between; align-items: center; }
+    .brand { font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+    .brand-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); margin-right: 8px; vertical-align: middle; }
+    .nav-links a { margin-left: 22px; color: var(--fg-dim); font-size: 14px; }
+
+    .hero { padding: 56px 0 32px; display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 56px; align-items: center; }
+    @media (max-width: 820px) { .hero { grid-template-columns: 1fr; gap: 32px; } }
+    .hero h1 { font-size: 48px; line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 18px; }
+    .hero h1 .accent { color: var(--accent); }
+    .hero .sub { color: var(--fg-dim); font-size: 18px; margin: 0 0 28px; max-width: 460px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .btn { display: inline-block; padding: 13px 22px; border-radius: 10px; font-weight: 600; font-size: 15px; transition: transform 0.1s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: #1a1410; }
+    .btn-primary:hover { color: #1a1410; }
+    .btn-ghost { color: var(--fg); border: 1px solid var(--line); }
+    .price-hint { color: var(--fg-dim); font-size: 13px; margin-left: 6px; }
+
+    .hero-img { background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px; aspect-ratio: 4/5; display: flex; align-items: center; justify-content: center; }
+    .hero-img img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px; }
+
+    .section { padding: 64px 0; border-top: 1px solid var(--line); }
+    .section h2 { font-size: 28px; letter-spacing: -0.01em; margin: 0 0 36px; }
+    .feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 820px) { .feature-grid { grid-template-columns: 1fr; } }
+    .feature { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+    .feature h3 { margin: 0 0 8px; font-size: 17px; }
+    .feature p { color: var(--fg-dim); margin: 0; font-size: 14px; }
+    .feature .em { color: var(--accent); }
+
+    .gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 12px; }
+    @media (max-width: 820px) { .gallery { grid-template-columns: repeat(2, 1fr); } }
+    .gallery img { width: 100%; aspect-ratio: 3/4; object-fit: contain; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+    .gallery .cap { color: var(--fg-dim); font-size: 12px; text-align: center; margin-top: 6px; display: block; }
+
+    .how ol { list-style: none; padding: 0; counter-reset: step; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    @media (max-width: 820px) { .how ol { grid-template-columns: 1fr; } }
+    .how li { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; position: relative; counter-increment: step; }
+    .how li::before { content: counter(step); position: absolute; top: 16px; right: 18px; color: var(--accent); font-weight: 700; font-size: 20px; }
+    .how li h3 { margin: 0 0 8px; font-size: 16px; }
+    .how li p { color: var(--fg-dim); margin: 0; font-size: 14px; }
+
+    .faq dt { font-weight: 600; margin-top: 22px; }
+    .faq dd { color: var(--fg-dim); margin: 6px 0 0; }
+
+    footer { padding: 36px 0 56px; color: var(--fg-dim); font-size: 13px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+    .pill { display: inline-block; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; color: var(--fg-dim); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand"><span class="brand-dot"></span>Kohai</div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#faq">FAQ</a>
+        <a href="#buy">Buy</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <div>
+        <h1>An anime <span class="accent">companion</span> that lives on your terminal while you use Claude Code.</h1>
+        <p class="sub">Kohai is a tiny desktop app. She sits in the corner of your terminal, reacts when Claude edits files, breaks the silence when you've been heads-down too long, and can be directed live with slash commands. Built specifically for Claude Code developers.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" id="buy" href="#buy">Get Kohai — $4.99</a>
+          <a class="btn btn-ghost" href="https://github.com/naderkhusheim-cyber/kohai" target="_blank" rel="noopener">View on GitHub</a>
+          <span class="price-hint">one-time · one device · macOS &amp; Windows</span>
+        </div>
+      </div>
+      <div class="hero-img">
+        <img src="assets/marketing/05-wave.png" alt="Kohai waving">
+      </div>
+    </section>
+
+    <section class="section" id="features">
+      <h2>What she does</h2>
+      <div class="feature-grid">
+        <div class="feature">
+          <h3>🌸 Lives on your terminal</h3>
+          <p>Pinned to the bottom-right of whatever terminal is frontmost — Terminal.app, iTerm2, Ghostty, WezTerm, Warp. Click-through so your typing isn't blocked.</p>
+        </div>
+        <div class="feature">
+          <h3>🎭 Multiple personalities</h3>
+          <p><span class="em">Kohai</span> (default), <span class="em">Girlfriend</span> (clingy + jealous), <span class="em">Coach</span> (hype), <span class="em">Maid</span> (formal). Switch with <code>/kohai-personality &lt;name&gt;</code>.</p>
+        </div>
+        <div class="feature">
+          <h3>🧠 Claude-driven scenes</h3>
+          <p>Tell her anything via <code>/kohai-do</code> — "sit at your desk", "wave hi", "point at line 42", "drink water". Claude composes the scene live; no canned animations.</p>
+        </div>
+        <div class="feature">
+          <h3>💧 Reminders that aren't text</h3>
+          <p>She <em>holds</em> the water bottle and tilts it to drink, picks up a snack when it's late, dims the lights at 1am. Reminders feel like company, not popups.</p>
+        </div>
+        <div class="feature">
+          <h3>🪄 Reacts to your work</h3>
+          <p>Tests pass → she celebrates. Build fails → she leans toward the screen looking worried. Long silence → she walks across the screen to check on you.</p>
+        </div>
+        <div class="feature">
+          <h3>🔒 One device, $4.99, forever</h3>
+          <p>One-time purchase. License is bound to your machine — no subscription, no telemetry, no nags. Lifetime updates.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>She has a body</h2>
+      <p style="color: var(--fg-dim); max-width: 600px; margin: 0 0 28px;">Every gesture is composed from her actual bone rig — sitting, drinking, pointing, waving, thinking. Not pre-rendered video. Claude poses her live based on what's happening.</p>
+      <div class="gallery">
+        <div>
+          <img src="assets/marketing/01-sit.png" alt="Sitting">
+          <span class="cap">sit on the floor</span>
+        </div>
+        <div>
+          <img src="assets/marketing/02-drink.png" alt="Drinking water">
+          <span class="cap">drink water</span>
+        </div>
+        <div>
+          <img src="assets/marketing/03-thinking.png" alt="Thinking">
+          <span class="cap">think</span>
+        </div>
+        <div>
+          <img src="assets/marketing/04-point.png" alt="Pointing at code">
+          <span class="cap">point at your code</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="section how" id="how">
+      <h2>How it works</h2>
+      <ol>
+        <li>
+          <h3>Buy &amp; download</h3>
+          <p>$4.99 on Lemon Squeezy. You get a license key by email and a download for macOS or Windows.</p>
+        </li>
+        <li>
+          <h3>Activate</h3>
+          <p>First launch: paste your license key. Kohai binds it to this machine and you're done. No account, no subscription.</p>
+        </li>
+        <li>
+          <h3>Use Claude Code as usual</h3>
+          <p>She auto-installs slash commands &amp; hooks into Claude Code. Type <code>/kohai-do</code> or just leave her running — she'll come alive on her own.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section faq" id="faq">
+      <h2>FAQ</h2>
+      <dl>
+        <dt>Do I need Claude Code to use this?</dt>
+        <dd>Yes. Kohai is a companion specifically for Anthropic's Claude Code CLI. She integrates via Claude Code's hooks, slash commands, and MCP server. Without Claude Code she's just a static character window.</dd>
+
+        <dt>What OS?</dt>
+        <dd>macOS 11+ and Windows 10/11. Linux is on the roadmap.</dd>
+
+        <dt>Can I move my license to a new computer?</dt>
+        <dd>One activation per license. If you replace your machine, email support@&lt;your-domain&gt; and we'll reset the activation.</dd>
+
+        <dt>Is there a subscription?</dt>
+        <dd>No. One-time $4.99. Lifetime updates as long as I'm shipping.</dd>
+
+        <dt>Does she send data anywhere?</dt>
+        <dd>Only license validation pings (so the device-lock works). No telemetry. No usage logging. Voice synth runs locally via VOICEVOX.</dd>
+
+        <dt>Refunds?</dt>
+        <dd>Within 7 days, no questions. Email and you get your $4.99 back.</dd>
+      </dl>
+    </section>
+
+    <section class="section" id="buy">
+      <h2>Get Kohai</h2>
+      <p style="color: var(--fg-dim); margin: 0 0 24px;">One-time $4.99 · device-locked license · macOS &amp; Windows · lifetime updates.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#" data-lemonsqueezy-url="REPLACE_WITH_LEMON_SQUEEZY_CHECKOUT_URL">Buy now — $4.99</a>
+        <span class="pill">Powered by Lemon Squeezy</span>
+      </div>
+    </section>
+
+    <footer>
+      <div>© 2026 Kohai. Built with care.</div>
+      <div>
+        <a href="https://github.com/naderkhusheim-cyber/kohai" target="_blank" rel="noopener">GitHub</a> ·
+        <a href="mailto:naderkhusheim@gmail.com">Contact</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

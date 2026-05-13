@@ -758,35 +758,44 @@ const LIFE_BEHAVIORS = {
     }, 9000);
   },
   // Autonomous drink-water — she suddenly decides she needs a sip.
-  // Compose pose live (no hardcoded recipe-style sequence). Uses the
-  // bone-attached asset system. See docs/capabilities.md for the full
-  // pick-up→drink→put-down lifecycle this is a condensed version of.
+  // Composed live with the proven side-profile grip: she turns 90°
+  // so we see her right side, raises right arm with bottle centered
+  // on the hand bone, tilts to sip, then puts everything back.
   drinkWater: () => {
-    // Skip the full pick-up arc in the idle ambient (saves time);
-    // just go straight to a drinking sip pose.
     say(ambientLine('drink'), 2800);
-    // 1) Bottle attached to her right hand, tilted for sip.
+    // 1) Turn to side profile so the grip reads visually.
+    turnTo(-Math.PI / 2);
+    // 2) Bottle attached to her right hand. Centered on the bone
+    //    (no offsetY), tilted slightly forward as if mid-sip.
     CONTROL_HANDLERS.asset({
       name: 'water-bottle', show: true,
-      attachTo: 'rightHand', width: '7%', offsetY: -20, tilt: -1.2,
+      attachTo: 'rightHand', width: '6%', offsetX: 0, offsetY: 0, tilt: -0.6,
     });
-    // 2) Raise arm to bring bottle to face.
-    setPoseTarget('rightUpperArm', { rx: -2.0, rz: 0.7, lerp: 25 });
-    setPoseTarget('rightLowerArm', { rx: -0.2, ry: -2.0, lerp: 25 });
-    setPoseTarget('rightHand',     { rx: -0.7, lerp: 25 });
-    setPoseTarget('head',          { rx: -0.25, lerp: 25 });
+    // 3) Raise right arm + elbow up so bottle reaches her face.
+    setPoseTarget('rightUpperArm', { rx: -1.6, rz: 0.8, lerp: 30 });
+    setPoseTarget('rightLowerArm', { ry: 1.95, lerp: 30 });
+    setPoseTarget('rightHand',     { rx: -0.6, rz: -0.2, lerp: 30 });
+    setPoseTarget('head',          { rx: -0.15, lerp: 30 });
     setTimeout(() => {
-      // 3) Lower arm + release bottle back to fixed ground position.
+      // 4) Tilt the bottle further for the "drink" instant.
+      CONTROL_HANDLERS.asset({
+        name: 'water-bottle', show: true,
+        attachTo: 'rightHand', width: '6%', offsetX: 0, offsetY: 0, tilt: -1.4,
+      });
+    }, 900);
+    setTimeout(() => {
+      // 5) Lower arm + remove bottle, turn back to camera.
       setPoseTarget('rightUpperArm', { rx: 0, rz: REST_RIGHT_UPPER_Z, lerp: 25 });
       setPoseTarget('rightLowerArm', { ry: -REST_LOWER_BEND, lerp: 25 });
       setPoseTarget('rightHand',     { rx: 0, lerp: 25 });
       setPoseTarget('head',          { rx: 0, lerp: 25 });
       CONTROL_HANDLERS.asset({ name: 'water-bottle', show: false });
+      turnTo(0);
       setTimeout(() => {
         clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'rightHand', 'head']);
         finishLife();
       }, 1200);
-    }, 2500);
+    }, 2800);
   },
   // Naps at the desk on her chair. KEEP MEDIUM SIZE.
   deskNap: () => {

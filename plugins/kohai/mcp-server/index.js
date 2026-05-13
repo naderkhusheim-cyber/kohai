@@ -152,8 +152,10 @@ ROTATION CONVENTIONS (this rig's bone bind is normalized — values below are EM
   head.rx >0 = looks down, <0 = looks up
   head.ry >0 = looks right, <0 = looks left
   head.rz >0 = tilts head right, <0 = tilts left
-  spine.rx <0 = leans torso forward (the ONLY bend axis we have for the upper body)
-  → For a full BOW, push spine.rx to -0.70 + head.rx 0.5 + small leg bend if it's a curtsy
+  spine.rx >0 = leans torso FORWARD (the ONLY bend axis we have for the upper body)
+  spine.rx <0 = leans BACKWARD (limbo, looks weird; avoid unless that's what you want)
+  → For a full BOW, push spine.rx to +1.3 + head.rx 0.5 + small leg bend if it's a curtsy
+  → THE SIGN IS COUNTERINTUITIVE — confirmed empirically by direct screenshot in 2026-05. Old anatomy docs had it inverted.
   upperArm.rz: arm at her side requires LEFT≈-1.3, RIGHT≈+1.3
   upperArm.rx <0 = arm swings forward; >0 = backward
   upperArm.rz — EXPLICIT VALUE TABLE (the part that broke previously):
@@ -197,15 +199,15 @@ POSE COOKBOOK — empirically validated (all bones in this rig; spine values are
   SHRUG:          { leftUpperArm: {rx:-0.85, rz:-0.40}, rightUpperArm: {rx:-0.85, rz:0.40}, leftLowerArm: {ry:-2.2}, rightLowerArm: {ry:2.2}, head: {rx:-0.10, rz:0.15} }
   CROSS_ARMS:     { leftUpperArm: {rx:-1.4, rz:-2.1}, rightUpperArm: {rx:-1.4, rz:2.1}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
                   → rz must go PAST rest (|rz| > 1.3) to cross over center; rest only stops at the body's vertical axis.
-  PEEK_FORWARD:   { spine: {rx:-0.80}, head: {rx:0.20, ry:-0.50, rz:0.10} }
-                  → drive spine only on rx (forward); adding spine.ry/rz tips her BACKWARD due to rotation compounding.
-                  Head.ry alone is enough to convey "peeking around something".
-  BOW:            { spine: {rx:-1.30}, head: {rx:0.50}, leftUpperArm: {rx:-0.15}, rightUpperArm: {rx:-0.15} }
-                  → spine bend in this rig is sublinear; -0.7 is barely visible, -1.3 produces a clean Japanese-style 90° bow.
+  PEEK_FORWARD:   { spine: {rx:0.80}, head: {rx:0.20, ry:-0.50, rz:0.10} }
+                  → drive spine only on rx (forward, POSITIVE); spine.ry/rz cause weird tipping.
+                  Head.ry alone conveys "peeking around something".
+  BOW:            { spine: {rx:1.30}, head: {rx:0.50}, leftUpperArm: {rx:-0.15}, rightUpperArm: {rx:-0.15} }
+                  → POSITIVE rx for forward bend. +1.3 produces a clean Japanese 90° bow.
                   Tiny upperArm.rx swings arms forward with the body so they don't stick out at sides.
-  SLEEPY_SLUMP:   { spine: {rx:-0.85}, head: {rx:0.70, rz:0.30}, leftUpperArm: {rx:-0.4}, rightUpperArm: {rx:-0.4}, leftLowerArm: {ry:-0.6}, rightLowerArm: {ry:0.6} }
+  SLEEPY_SLUMP:   { spine: {rx:0.85}, head: {rx:0.70, rz:0.30}, leftUpperArm: {rx:-0.4}, rightUpperArm: {rx:-0.4}, leftLowerArm: {ry:-0.6}, rightLowerArm: {ry:0.6} }
   MAID_CURTSY:    use hipsY: -0.20 +
-                  { spine: {rx:-1.0}, head: {rx:0.45}, leftUpperLeg: {rx:0.80}, rightUpperLeg: {rx:0.80}, leftLowerLeg: {rx:-0.60}, rightLowerLeg: {rx:-0.60}, leftUpperArm: {rx:-0.35, rz:-1.1}, rightUpperArm: {rx:-0.35, rz:1.1} }
+                  { spine: {rx:1.0}, head: {rx:0.45}, leftUpperLeg: {rx:0.80}, rightUpperLeg: {rx:0.80}, leftLowerLeg: {rx:-0.60}, rightLowerLeg: {rx:-0.60}, leftUpperArm: {rx:-0.35, rz:-1.1}, rightUpperArm: {rx:-0.35, rz:1.1} }
                   → arms angled out for "skirt pinch" silhouette; hipsY drops her slightly so the leg dip reads as a real curtsy not just bent knees.
   HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
@@ -217,12 +219,18 @@ POSE COOKBOOK — empirically validated (all bones in this rig; spine values are
     right so her back lands against the backrest. With -90 she ends up
     facing INTO the backrest instead of away from it.
     Use hipsY: -0.18 (NOT -0.32 — that sinks her too far down into the seat). Two hand variants — pick one per call (randomize so she feels alive):
-    a) Typing (hands forward on virtual keyboard):
-       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.20}, head: {rx:0.15}, leftUpperArm: {rx:-1.2, rz:-1.0}, rightUpperArm: {rx:-1.2, rz:1.0}, leftLowerArm: {ry:-1.0}, rightLowerArm: {ry:1.0} }
+    a) Typing (hands forward on virtual keyboard) — spine.rx POSITIVE for slight forward lean over the desk:
+       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:0.20}, head: {rx:0.15}, leftUpperArm: {rx:-1.2, rz:-1.0}, rightUpperArm: {rx:-1.2, rz:1.0}, leftLowerArm: {ry:-1.0}, rightLowerArm: {ry:1.0} }
     b) Hands on lap (relaxed/idle sit):
-       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.05}, leftUpperArm: {rx:-0.4, rz:-1.2}, rightUpperArm: {rx:-0.4, rz:1.2}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
+       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:0.05}, leftUpperArm: {rx:-0.4, rz:-1.2}, rightUpperArm: {rx:-0.4, rz:1.2}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
 
 To release a pose so the bone returns to natural animation, call kohai_clear_pose with the bone names. To clear everything, pass an empty object {}.
+
+RETURNING TO T-POSE / CLEANING UP:
+  Call kohai_play_animation({name:'stand'}) — drives every bone home AND auto-removes any held assets (water bottle, mug, etc.) so she really resets. Always do this before exiting a scene; otherwise the bottle/prop hangs in her hand indefinitely.
+
+HOLDING THINGS — fingers limitation:
+  This rig's finger bones are STUBS (no mesh weights), so her hand can't physically grip around a bottle. The visual "holding" effect comes from positioning: the bone-attached asset projects onto her hand position. It will read as "near her hand" but not "fingers wrapped around it." Accept the limit or layer a hand-overlay SVG that includes drawn-on fingers around the prop.
 
 You are Kohai's body. Use this freely to express what's happening in the conversation.`,
     inputSchema: {

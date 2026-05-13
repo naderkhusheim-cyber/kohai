@@ -55,7 +55,7 @@ values stay the same. So bone rotations are reliable across `kohai_turn`.
 | Bone | Rest rotation | Positive rx does | Positive rz does |
 |---|---|---|---|
 | `head`, `neck` | `(0, 0, 0)` | chin DOWN (look at floor) | tilt ear toward shoulder |
-| `spine` | `(0, 0, 0)` | leans BACKWARD | side-bend |
+| `spine` | `(0, 0, 0)` | **POSITIVE rx leans FORWARD** (bow/sleepy/curtsy direction). Negative leans BACKWARD (limbo). Sign was empirically reversed from the old VRM spec assumption — confirmed by direct screenshot. | side-bend |
 | `hips` | `(0, 0, 0)` | (don't rotate hips — use `hipsTargetY` for vertical translation only) | — |
 | `leftUpperArm` | `(0, 0, -1.30)` (A-pose, arm hangs at side) | swings arm UP-and-back | raises arm sideways (toward T-pose) |
 | `rightUpperArm` | `(0, 0, +1.30)` (mirror) | swings arm UP-and-back | raises arm sideways (mirror) |

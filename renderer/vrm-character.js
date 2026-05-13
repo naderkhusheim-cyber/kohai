@@ -128,6 +128,17 @@ const PROCEDURAL_ANIMS = {
     ]);
     hipsTargetY = 0;
     delete container.dataset.room;
+    // Clear any bone-attached or hand-held assets so she fully returns
+    // to T-pose — otherwise the water bottle/mug/etc. linger after a
+    // drink/eat life behavior and she keeps "holding" it forever.
+    for (const name of Array.from(attachedAssets.keys())) {
+      try { CONTROL_HANDLERS.asset({ name, show: false }); } catch (_) {}
+    }
+    for (const k of Array.from(handProps.keys())) clearHandProp(k);
+    delete container.dataset.propPointer;
+    delete container.dataset.propGlasses;
+    delete container.dataset.propCup;
+    delete container.dataset.propHeadphones;
     // Once she's fully stood up, release the leg/spine targets so
     // future motions aren't fighting our zero-target.
     setTimeout(() => clearPoseTargets([
@@ -579,7 +590,7 @@ const BEHAVIORS = {
     { ms: 0,   enter: () => {
       setPoseTarget('leftUpperArm',  { rx: -2.7, rz: -0.5, lerp: 4 });
       setPoseTarget('rightUpperArm', { rx: -2.7, rz:  0.5, lerp: 4 });
-      setPoseTarget('spine',         { rx: -0.20 });
+      setPoseTarget('spine',         { rx: 0.20 });
     } },
     { ms: 1100, enter: () => clearPoseTargets(['leftUpperArm', 'rightUpperArm', 'spine']) },
   ],
@@ -592,13 +603,13 @@ const BEHAVIORS = {
     { ms: 1600, enter: () => clearPoseTargets(['rightUpperArm', 'rightLowerArm', 'head']) },
   ],
   bow: [
-    { ms: 0,    enter: () => { setPoseTarget('spine', { rx: -0.55, lerp: 3 }); setPoseTarget('head', { rx: 0.5, lerp: 3 }); } },
+    { ms: 0,    enter: () => { setPoseTarget('spine', { rx: 1.3, lerp: 3 }); setPoseTarget('head', { rx: 0.5, lerp: 3 }); } },
     { ms: 1400, enter: () => { /* hold */ } },
     { ms: 1100, enter: () => clearPoseTargets(['spine', 'head']) },
   ],
   peek: [
     // tilt forward and to the side, like she's leaning over to read
-    { ms: 0,   enter: () => { setPoseTarget('spine', { rx: -0.18, ry: 0.15 }); setPoseTarget('head', { rx: 0.25 }); } },
+    { ms: 0,   enter: () => { setPoseTarget('spine', { rx: 0.80 }); setPoseTarget('head', { rx: 0.25, ry: -0.50 }); } },
     { ms: 1200, enter: () => clearPoseTargets(['spine', 'head']) },
   ],
   shrug: [
@@ -717,27 +728,36 @@ const LIFE_BEHAVIORS = {
     window.kohai.walk(dest[0], dest[1], 3000);
     setTimeout(finishLife, 3600);
   },
-  // She bounces with joy — celebrate-style arms-up snap.
+  // She bounces with joy — three jumps in a row for visible motion.
   jump: () => {
-    say(ambientLine('jump'), 1800);
-    // Crouch...
-    setPoseTarget('leftUpperLeg',  { rx: 0.4, lerp: 30 });
-    setPoseTarget('rightUpperLeg', { rx: 0.4, lerp: 30 });
-    setPoseTarget('leftLowerLeg',  { rx: -0.6, lerp: 30 });
-    setPoseTarget('rightLowerLeg', { rx: -0.6, lerp: 30 });
-    setTimeout(() => {
-      // Apex — arms overhead celebrate snap
-      setPoseTarget('leftUpperLeg',  { rx: 0,    lerp: 50 });
-      setPoseTarget('rightUpperLeg', { rx: 0,    lerp: 50 });
-      setPoseTarget('leftLowerLeg',  { rx: 0,    lerp: 50 });
-      setPoseTarget('rightLowerLeg', { rx: 0,    lerp: 50 });
-      setPoseTarget('leftUpperArm',  { rx: -2.4, rz: -0.4, lerp: 50 });
-      setPoseTarget('rightUpperArm', { rx: -2.4, rz:  0.4, lerp: 50 });
-    }, 250);
+    say(ambientLine('jump'), 2400);
+    const crouch = () => {
+      setPoseTarget('leftUpperLeg',  { rx: 0.4, lerp: 30 });
+      setPoseTarget('rightUpperLeg', { rx: 0.4, lerp: 30 });
+      setPoseTarget('leftLowerLeg',  { rx: -0.6, lerp: 30 });
+      setPoseTarget('rightLowerLeg', { rx: -0.6, lerp: 30 });
+      setPoseTarget('leftUpperArm',  { rz: -1.3, lerp: 30 });
+      setPoseTarget('rightUpperArm', { rz: 1.3, lerp: 30 });
+    };
+    const apex = () => {
+      setPoseTarget('leftUpperLeg',  { rx: -0.3, lerp: 60 });
+      setPoseTarget('rightUpperLeg', { rx: -0.3, lerp: 60 });
+      setPoseTarget('leftLowerLeg',  { rx: -0.4, lerp: 60 });
+      setPoseTarget('rightLowerLeg', { rx: -0.4, lerp: 60 });
+      setPoseTarget('leftUpperArm',  { rz: 1.7, lerp: 60 });
+      setPoseTarget('rightUpperArm', { rz: -1.7, lerp: 60 });
+    };
+    // Three jump cycles: crouch → apex → crouch → apex → crouch → apex.
+    crouch();
+    setTimeout(apex,   250);
+    setTimeout(crouch, 600);
+    setTimeout(apex,   850);
+    setTimeout(crouch, 1200);
+    setTimeout(apex,   1450);
     setTimeout(() => {
       clearPoseTargets();
       finishLife();
-    }, 1100);
+    }, 2200);
   },
   // She listens to music — headphones on, gentle head bob.
   music: () => {
@@ -758,13 +778,13 @@ const LIFE_BEHAVIORS = {
   // Sits down at her desk and codes briefly. KEEP MEDIUM SIZE — user
   // explicitly said never bigger than the default window.
   deskCoding: () => {
-    turnTo(-Math.PI / 2);
+    turnTo(Math.PI / 2);
     container.dataset.room = 'workspace';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 5 });
     setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 5 });
     setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 5 });
     setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 5 });
-    setPoseTarget('spine', { rx: -0.35, lerp: 5 });
+    setPoseTarget('spine', { rx: 0.35, lerp: 5 });
     setPoseTarget('head',  { rx: 0.45,  lerp: 5 });
     setPoseTarget('leftUpperArm',  { rx: -1.10, rz: REST_LEFT_UPPER_Z + 0.30, lerp: 5 });
     setPoseTarget('rightUpperArm', { rx: -1.10, rz: REST_RIGHT_UPPER_Z - 0.30, lerp: 5 });
@@ -828,7 +848,7 @@ const LIFE_BEHAVIORS = {
   standingNap: () => {
     setMoodExpression('sleepy');
     say(ambientLine('nap'), 4500);
-    setPoseTarget('spine',         { rx: -0.30, lerp: 3 });
+    setPoseTarget('spine',         { rx: 0.30, lerp: 3 });
     setPoseTarget('head',          { rx: 0.55, rz: 0.10, lerp: 3 });
     setPoseTarget('leftUpperArm',  { rx: -0.20, lerp: 4 });
     setPoseTarget('rightUpperArm', { rx: -0.20, lerp: 4 });
@@ -842,13 +862,13 @@ const LIFE_BEHAVIORS = {
   },
   // Naps at the desk on her chair. KEEP MEDIUM SIZE.
   deskNap: () => {
-    turnTo(-Math.PI / 2);
+    turnTo(Math.PI / 2);
     container.dataset.room = 'workspace';
     setPoseTarget('leftUpperLeg',  { rx: 1.55, rz:  0.05, lerp: 4 });
     setPoseTarget('rightUpperLeg', { rx: 1.55, rz: -0.05, lerp: 4 });
     setPoseTarget('leftLowerLeg',  { rx: -1.55, lerp: 4 });
     setPoseTarget('rightLowerLeg', { rx: -1.55, lerp: 4 });
-    setPoseTarget('spine', { rx: -0.55, lerp: 3 });   // slumped forward onto desk
+    setPoseTarget('spine', { rx: 0.55, lerp: 3 });   // slumped forward onto desk
     setPoseTarget('head',  { rx: 0.7,   lerp: 3 });   // forehead-on-desk droop
     setPoseTarget('leftUpperArm',  { rx: -0.40, lerp: 4 });
     setPoseTarget('rightUpperArm', { rx: -0.40, lerp: 4 });

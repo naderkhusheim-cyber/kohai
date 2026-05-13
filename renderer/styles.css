@@ -201,7 +201,14 @@ html, body {
    backrest flips to the wrong side and she ends up "facing" the chair. */
 .kohai-container[data-room="workspace"] .chair {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  /* Shift the chair LEFT so the backrest lands cleanly BEHIND her body
+     and doesn't extend past her right side. translateX(-65%) instead of
+     -50% pushes the chair ~15% further left = her back is properly
+     against the backrest, not embedded in it. Width 70% (was 80%) keeps
+     the chair from dwarfing her tiny body. */
+  width: 70%;
+  left: 70%;
+  transform: translateX(-65%) translateY(0);
 }
 /* Workspace is INTENTIONALLY minimal — chair only. No lamp, no plant,
    no floor. The 3D laptop on her lap is the only thing besides her body

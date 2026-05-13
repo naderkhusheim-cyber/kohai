@@ -214,15 +214,19 @@ POSE COOKBOOK — empirically validated (all bones in this rig; spine values are
   FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }
   CHAIR_SIT — first drop the chair backdrop and turn to side profile:
     kohai_room({name:'workspace'}) + kohai_turn({degrees:90})
-    NB: degrees MUST be +90 (not -90). The chair SVG's backrest renders
-    canvas-left and the seat extends canvas-right; +90 faces her camera-
-    right so her back lands against the backrest. With -90 she ends up
-    facing INTO the backrest instead of away from it.
+    NB: chair SVG renders backrest on canvas-LEFT (per vrm.html L67),
+    seat extends canvas-RIGHT. +90 turn faces her camera-right so her
+    back lands against the backrest and her arms reach forward to
+    where a virtual keyboard would be. With -90 she ends up facing
+    INTO the backrest — confirmed by direct screenshot.
     Use hipsY: -0.18 (NOT -0.32 — that sinks her too far down into the seat). Two hand variants — pick one per call (randomize so she feels alive):
-    a) Typing (hands forward on virtual keyboard) — spine.rx POSITIVE for slight forward lean over the desk:
-       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:0.20}, head: {rx:0.15}, leftUpperArm: {rx:-1.2, rz:-1.0}, rightUpperArm: {rx:-1.2, rz:1.0}, leftLowerArm: {ry:-1.0}, rightLowerArm: {ry:1.0} }
+    Final empirical leg config (legs straight forward, parallel to seat top, so feet reach the front of the chair):
+      leftUpperLeg/rightUpperLeg: rx=-1.55, leftLowerLeg/rightLowerLeg: rx=0
+      (Confirmed by user: thigh tucks up, calf extends straight in line with thigh — fills the seat properly.)
+    a) Typing (hands at chest height reaching for keyboard):
+       { leftUpperLeg: {rx:-1.55}, rightUpperLeg: {rx:-1.55}, leftLowerLeg: {rx:0}, rightLowerLeg: {rx:0}, spine: {rx:0.10}, head: {rx:0.10}, leftUpperArm: {rx:-0.7, rz:-1.15}, rightUpperArm: {rx:-0.7, rz:1.15}, leftLowerArm: {ry:-0.6}, rightLowerArm: {ry:0.6} }
     b) Hands on lap (relaxed/idle sit):
-       { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:0.05}, leftUpperArm: {rx:-0.4, rz:-1.2}, rightUpperArm: {rx:-0.4, rz:1.2}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
+       { leftUpperLeg: {rx:-1.55}, rightUpperLeg: {rx:-1.55}, leftLowerLeg: {rx:0}, rightLowerLeg: {rx:0}, spine: {rx:0.05}, leftUpperArm: {rx:-0.4, rz:-1.2}, rightUpperArm: {rx:-0.4, rz:1.2}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
 
 To release a pose so the bone returns to natural animation, call kohai_clear_pose with the bone names. To clear everything, pass an empty object {}.
 

@@ -186,22 +186,27 @@ CRITICAL — hipsY for seated/lying poses:
 
 POSE COOKBOOK — empirically validated (all bones in this rig; spine values are deep because this rig's bend response is sublinear):
   WAVE:           { rightUpperArm: {rz:-1.7}, rightLowerArm: {ry:0.5}, rightHand: {rz:-0.4} }
-  POINT_FORWARD:  { rightUpperArm: {rx:-1.2, rz:1.2}, rightLowerArm: {ry:0.0} }
-                  → also kohai_turn({degrees:-30}) for a 3/4 view; "forward" at turn=0 foreshortens the arm into the camera and reads as a stub.
+  POINT_FORWARD:  { rightUpperArm: {rx:-1.0, rz:1.4}, rightLowerArm: {ry:0.0}, rightHand: {rx:-0.2}, head: {ry:-0.30} }
+                  → also kohai_turn({degrees:-25}) for a 3/4 view; "forward" at turn=0 foreshortens the arm into the camera and reads as a stub.
   HANDS_UP:       { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7} }
   STRETCH_UP:     { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7}, head: {rx:-0.2} }
   JUMP_APEX:      { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7}, leftUpperLeg: {rx:-0.9}, rightUpperLeg: {rx:-0.9}, leftLowerLeg: {rx:-1.1}, rightLowerLeg: {rx:-1.1}, spine: {rx:-0.15} }
                   → knees tucked toward chest = clear "cannonball" airborne read.
   ARMS_AT_SIDES:  { leftUpperArm: {rz:-1.3}, rightUpperArm: {rz:1.3} }
   THINKING_CHIN:  { rightUpperArm: {rx:-1.0, rz:1.0}, rightLowerArm: {ry:1.95}, rightHand: {rx:-0.3}, head: {rx:0.15, ry:-0.1, rz:-0.18} }
-  SHRUG:          { leftUpperArm: {rx:-0.9, rz:-0.5}, rightUpperArm: {rx:-0.9, rz:0.5}, leftLowerArm: {ry:-2.0}, rightLowerArm: {ry:2.0}, head: {rx:-0.05, rz:0.10} }
+  SHRUG:          { leftUpperArm: {rx:-0.85, rz:-0.40}, rightUpperArm: {rx:-0.85, rz:0.40}, leftLowerArm: {ry:-2.2}, rightLowerArm: {ry:2.2}, head: {rx:-0.10, rz:0.15} }
   CROSS_ARMS:     { leftUpperArm: {rx:-1.4, rz:-2.1}, rightUpperArm: {rx:-1.4, rz:2.1}, leftLowerArm: {ry:-0.4}, rightLowerArm: {ry:0.4} }
                   → rz must go PAST rest (|rz| > 1.3) to cross over center; rest only stops at the body's vertical axis.
-  PEEK_FORWARD:   { spine: {rx:-1.1, ry:0.40}, head: {rx:0.35, ry:-0.20} }
-  BOW:            { spine: {rx:-1.2}, head: {rx:0.45} }
-                  → spine bend in this rig is sublinear; -0.7 is barely visible, -1.2 produces a clear Japanese-style bow.
-  SLEEPY_SLUMP:   { spine: {rx:-1.1}, head: {rx:0.65, rz:0.25}, leftUpperArm: {rx:-0.3}, rightUpperArm: {rx:-0.3} }
-  MAID_CURTSY:    { spine: {rx:-1.2}, head: {rx:0.40}, leftUpperLeg: {rx:0.75}, rightUpperLeg: {rx:0.75}, leftLowerLeg: {rx:-0.70}, rightLowerLeg: {rx:-0.70}, leftUpperArm: {rx:-0.3}, rightUpperArm: {rx:-0.3} }
+  PEEK_FORWARD:   { spine: {rx:-0.80}, head: {rx:0.20, ry:-0.50, rz:0.10} }
+                  → drive spine only on rx (forward); adding spine.ry/rz tips her BACKWARD due to rotation compounding.
+                  Head.ry alone is enough to convey "peeking around something".
+  BOW:            { spine: {rx:-1.30}, head: {rx:0.50}, leftUpperArm: {rx:-0.15}, rightUpperArm: {rx:-0.15} }
+                  → spine bend in this rig is sublinear; -0.7 is barely visible, -1.3 produces a clean Japanese-style 90° bow.
+                  Tiny upperArm.rx swings arms forward with the body so they don't stick out at sides.
+  SLEEPY_SLUMP:   { spine: {rx:-0.85}, head: {rx:0.70, rz:0.30}, leftUpperArm: {rx:-0.4}, rightUpperArm: {rx:-0.4}, leftLowerArm: {ry:-0.6}, rightLowerArm: {ry:0.6} }
+  MAID_CURTSY:    use hipsY: -0.20 +
+                  { spine: {rx:-1.0}, head: {rx:0.45}, leftUpperLeg: {rx:0.80}, rightUpperLeg: {rx:0.80}, leftLowerLeg: {rx:-0.60}, rightLowerLeg: {rx:-0.60}, leftUpperArm: {rx:-0.35, rz:-1.1}, rightUpperArm: {rx:-0.35, rz:1.1} }
+                  → arms angled out for "skirt pinch" silhouette; hipsY drops her slightly so the leg dip reads as a real curtsy not just bent knees.
   HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
   FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }
@@ -211,7 +216,7 @@ POSE COOKBOOK — empirically validated (all bones in this rig; spine values are
     canvas-left and the seat extends canvas-right; +90 faces her camera-
     right so her back lands against the backrest. With -90 she ends up
     facing INTO the backrest instead of away from it.
-    Use hipsY: -0.32. Two hand variants — pick one per call (randomize so she feels alive):
+    Use hipsY: -0.18 (NOT -0.32 — that sinks her too far down into the seat). Two hand variants — pick one per call (randomize so she feels alive):
     a) Typing (hands forward on virtual keyboard):
        { leftUpperLeg: {rx:1.55}, rightUpperLeg: {rx:1.55}, leftLowerLeg: {rx:-1.55}, rightLowerLeg: {rx:-1.55}, spine: {rx:-0.20}, head: {rx:0.15}, leftUpperArm: {rx:-1.2, rz:-1.0}, rightUpperArm: {rx:-1.2, rz:1.0}, leftLowerArm: {ry:-1.0}, rightLowerArm: {ry:1.0} }
     b) Hands on lap (relaxed/idle sit):

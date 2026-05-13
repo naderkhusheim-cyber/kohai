@@ -221,7 +221,7 @@ const SCENES = {
       // the chair_sit arm targets).
       if (hips && !bodyProps.has('laptop')) {
         const lap = makeBodyProp('laptop');
-        if (lap) { lap.position.set(0, -0.06, 0.18); hips.add(lap); bodyProps.set('laptop', lap); }
+        if (lap) { lap.position.set(0, 0.04, 0.20); hips.add(lap); bodyProps.set('laptop', lap); }
       }
       say('okay, coding~', 3500);
     },
@@ -619,7 +619,7 @@ function enterCoding() {
   if (hips && !bodyProps.has('laptop')) {
     const laptop = makeBodyProp('laptop');
     if (laptop) {
-      laptop.position.set(0, -0.06, 0.18);
+      laptop.position.set(0, 0.04, 0.20);
       hips.add(laptop);
       bodyProps.set('laptop', laptop);
     }
@@ -1743,7 +1743,7 @@ const CONTROL_HANDLERS = {
     if (!hips || bodyProps.has(name)) return;
     const prop = makeBodyProp(name);
     if (!prop) return;
-    if (name === 'laptop') prop.position.set(0, -0.06, 0.18);
+    if (name === 'laptop') prop.position.set(0, 0.04, 0.20);
     hips.add(prop);
     bodyProps.set(name, prop);
   },

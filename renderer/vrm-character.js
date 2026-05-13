@@ -337,16 +337,24 @@ function onVRMLoaded(gltf) {
     vrm.scene.position.y -= b2.min.y;
     vrm.scene.updateMatrixWorld(true);
   }
-  // Frame the FULL body — lookAt mid-body, pull camera back enough that
-  // the whole character (plus a little margin) fits vertically.
+  // Frame the FULL body — pulled back with extra headroom above so that
+  // arm-up poses (wave, banzai, stretch, fist-pump) don't crop at the
+  // top of the canvas. We bias the lookAt UP above mid-body so the
+  // character renders LOWER in the frame, leaving the top portion of
+  // the canvas free for raised hands.
   const finalBox = new THREE.Box3().setFromObject(vrm.scene);
   const charHeight = finalBox.max.y - finalBox.min.y;
   const midY = finalBox.min.y + charHeight * 0.5;
-  const halfFit = charHeight * 0.95; // character fills ~half the canvas
+  // Frame ~75% of canvas (was 95%) so a raised arm (which extends
+  // ~30% above the head) has room to fit. 1.30 multiplier on the half-
+  // height pulls the camera back enough to leave that headroom.
+  const halfFit = charHeight * 1.30;
   const fovRad = (camera.fov * Math.PI) / 180;
   const dist = halfFit / Math.tan(fovRad / 2);
-  camera.position.set(0, midY + charHeight * 0.05, dist);
-  camera.lookAt(0, midY, 0);
+  // Look 18% above mid-body → character renders lower in the canvas,
+  // top of the frame stays free for raised hands.
+  camera.position.set(0, midY + charHeight * 0.18, dist);
+  camera.lookAt(0, midY + charHeight * 0.18, 0);
   camera.updateProjectionMatrix();
 
   // Sanity check: if the VRM has no humanoid (e.g. a developer constraint

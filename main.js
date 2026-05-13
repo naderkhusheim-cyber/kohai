@@ -52,14 +52,10 @@ function stopEngine() {
 }
 
 const SIZES = {
-  small:    { w: 240, h: 360 },
-  // Medium is the default pinned-corner size. Bumped 400→520 tall so
-  // arm-up poses (wave, banzai, stretch, fist-pump) don't crop at the
-  // top of the canvas. Width unchanged so she still fits cleanly in the
-  // terminal corner.
-  medium:   { w: 340, h: 520 },
-  large:    { w: 480, h: 680 },
-  xl:       { w: 640, h: 880 },
+  small:    { w: 240, h: 320 },
+  medium:   { w: 320, h: 400 },
+  large:    { w: 480, h: 600 },
+  xl:       { w: 640, h: 800 },
   // Full-body — narrow + tall so her whole standing figure fits with
   // room for an extended arm reaching toward the terminal behind her.
   fullbody: { w: 420, h: 960 },

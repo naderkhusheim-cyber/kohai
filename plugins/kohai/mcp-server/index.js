@@ -132,24 +132,42 @@ const TOOLS = [
     name: 'kohai_pose',
     description: `Pose Kohai by setting any bone's rotation directly. Use this to make her gesture, point, lean, hold something, react — anything. Compose poses by combining multiple bones in one call.
 
-ANATOMY (14 bones, all rotations in radians):
-  head, neck, spine, hips
-  leftUpperArm, rightUpperArm   — shoulder
-  leftLowerArm, rightLowerArm   — forearm (elbow)
-  leftHand, rightHand           — wrist
-  leftUpperLeg, rightUpperLeg   — hip-to-knee
-  leftLowerLeg, rightLowerLeg   — shin
+ANATOMY — only bones that ACTUALLY deform the mesh (the others exist in the humanoid map but are stub bones in this rig; rotating them is a no-op):
+  TORSO:  hips, spine, neck, head
+          — spine is the ONLY torso bend bone. chest/upperChest exist
+            but are not skinned to the mesh — do NOT use them.
+            For a full bow, drive spine.rx hard (around -0.70) + head.rx 0.5.
+  EYES:   leftEye, rightEye  — driven by lookAt; don't pose manually.
+  ARMS:   leftUpperArm, leftLowerArm, leftHand
+          rightUpperArm, rightLowerArm, rightHand
+          — shoulders (leftShoulder/rightShoulder) are stub bones too;
+            arm raise comes entirely from upperArm.rz.
+  FINGERS: ❌ NOT AVAILABLE. All 30 finger bones are stub bones in this
+          rig — they do nothing. Use the hand prop system (kohai_prop)
+          or just suggest a closed-fist via wrist rotation if needed.
+  LEGS:   leftUpperLeg, leftLowerLeg, leftFoot (mirror right) — all
+          deform. (toes likely stub; avoid relying on them.)
 
-ROTATION CONVENTIONS (this rig's bone bind is non-standard — these are EMPIRICAL, not VRM spec):
+ROTATION CONVENTIONS (this rig's bone bind is normalized — values below are EMPIRICAL):
   head.rx >0 = looks down, <0 = looks up
   head.ry >0 = looks right, <0 = looks left
   head.rz >0 = tilts head right, <0 = tilts left
-  spine.rx <0 = leans forward (chest forward)
+  spine.rx <0 = leans torso forward (the ONLY bend axis we have for the upper body)
+  → For a full BOW, push spine.rx to -0.70 + head.rx 0.5 + small leg bend if it's a curtsy
   upperArm.rz: arm at her side requires LEFT≈-1.3, RIGHT≈+1.3
   upperArm.rx <0 = arm swings forward; >0 = backward
-  upperArm.rz: drives the arm UP/DOWN relative to rest. Right arm uses
-               rz toward 0 or negative to raise; left arm rz toward 0 or
-               positive. (Mirror of the rest values -1.3 / +1.3.)
+  upperArm.rz — EXPLICIT VALUE TABLE (the part that broke previously):
+    RIGHT arm:
+      +1.30 = REST (arm hanging at her side)
+       0    = T-pose (arm horizontal out to side)
+      -1.30 = arm straight UP
+      -1.70 = arm above head, waving high
+    LEFT arm (mirror):
+      -1.30 = REST (arm hanging)
+       0    = T-pose
+      +1.30 = straight UP
+      +1.70 = above head waving high
+    Going PAST these (e.g. ±2.4) over-rotates back behind the head.
   lowerArm.ry: ELBOW BEND axis (this rig's normalized bones).
                - RIGHT arm: POSITIVE ry bends the elbow (forearm UP),
                  e.g. ry=1.95 brings the right hand to face level.
@@ -169,12 +187,16 @@ CRITICAL — hipsY for seated/lying poses:
 POSE COOKBOOK — copy and adapt:
   WAVE:           { rightUpperArm: {rz:-1.7}, rightLowerArm: {ry:0.5}, rightHand: {rz:-0.4} }
   POINT_FORWARD:  { rightUpperArm: {rx:-1.5, rz:0.4}, rightLowerArm: {ry:-0.2} }
-  HANDS_UP:       { leftUpperArm: {rx:0, rz:-2.5}, rightUpperArm: {rx:0, rz:2.5} }
+  HANDS_UP:       { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7} }
+  STRETCH_UP:     { leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7}, head: {rx:-0.2} }
+  JUMP_APEX:      { leftUpperLeg: {rx:0}, rightUpperLeg: {rx:0}, leftLowerLeg: {rx:0}, rightLowerLeg: {rx:0}, leftUpperArm: {rz:1.7}, rightUpperArm: {rz:-1.7} }
   ARMS_AT_SIDES:  { leftUpperArm: {rz:-1.3}, rightUpperArm: {rz:1.3} }
   THINKING_CHIN:  { rightUpperArm: {rx:-1.0, rz:1.0}, rightLowerArm: {ry:1.95}, rightHand: {rx:-0.3}, head: {rx:0.15, ry:-0.1, rz:-0.18} }
   SHRUG:          { leftUpperArm: {rx:-0.5, rz:-1.0}, rightUpperArm: {rx:-0.5, rz:1.0}, leftLowerArm: {ry:-0.9}, rightLowerArm: {ry:0.9} }
   PEEK_FORWARD:   { spine: {rx:-0.25, ry:0.15}, head: {rx:0.3} }
-  BOW:            { spine: {rx:-0.5}, head: {rx:0.45} }
+  BOW:            { spine: {rx:-0.70}, head: {rx:0.50} }
+  SLEEPY_SLUMP:   { spine: {rx:-0.45}, head: {rx:0.55, rz:0.15} }
+  MAID_CURTSY:    { spine: {rx:-0.55}, head: {rx:0.35}, leftUpperLeg: {rx:0.30}, rightUpperLeg: {rx:0.30}, leftLowerLeg: {rx:-0.20}, rightLowerLeg: {rx:-0.20} }
   HEAD_TILT_CUTE: { head: {rx:0.1, rz:0.4} }
   CROSS_ARMS:     { leftUpperArm: {rx:-0.6, rz:-0.5}, rightUpperArm: {rx:-0.6, rz:0.5}, leftLowerArm: {ry:-1.5}, rightLowerArm: {ry:1.5} }
   FLOOR_SIT (use with hipsY: -0.55):  { leftUpperLeg: {rx:1.40, rz:0.08}, rightUpperLeg: {rx:1.40, rz:-0.08}, leftLowerLeg: {rx:-1.30}, rightLowerLeg: {rx:-1.30}, spine: {rx:0.05}, leftUpperArm: {rx:-0.2, rz:-1.15}, rightUpperArm: {rx:-0.2, rz:1.15}, leftLowerArm: {ry:-0.5}, rightLowerArm: {ry:0.5} }

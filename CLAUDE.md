@@ -73,3 +73,11 @@ visible bash noise.
 - Window stays at compact `medium` size, pinned to the bottom-right
   corner of the active terminal. Never resize her up to fill the
   terminal — the user explicitly said that's ugly and disturbing.
+- **Stub bones in this rig — never pose them, they're no-ops**:
+  `chest`, `upperChest`, `leftShoulder`, `rightShoulder`, every finger
+  bone (`*Thumb*`, `*Index*`, `*Middle*`, `*Ring*`, `*Little*`),
+  `leftToes`, `rightToes`. They show up in the humanoid map but the
+  mesh isn't skinned to them; rotating them does nothing visible.
+  Use `spine` for ALL torso bend (drive it harder, ~-0.7 for a bow);
+  use `upperArm.rz` for all arm raise; for "holding/gripping" use
+  `kohai_prop` or `kohai_asset` (bone-attached SVG) instead of fingers.

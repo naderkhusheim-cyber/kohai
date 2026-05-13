@@ -35,6 +35,20 @@
       "defaultPosition": { "x": "75%", "y": "70%" },
       "defaultWidth": "10%",
       "description": "Onigiri on a tray. Use for eat/break reminders."
+    },
+    "rain": {
+      "file": "rain.svg",
+      "kind": "weather",
+      "defaultPosition": { "x": "50%", "y": "50%" },
+      "defaultWidth": "100%",
+      "description": "Rain overlay across the canvas. Use as full-screen weather."
+    },
+    "snow": {
+      "file": "snow.svg",
+      "kind": "weather",
+      "defaultPosition": { "x": "50%", "y": "50%" },
+      "defaultWidth": "100%",
+      "description": "Snow particles across the canvas. Use as full-screen weather."
     }
   }
 }

@@ -23,6 +23,29 @@ Three.js right-handed, +Y up. The character is parented to a root
 *overwritten* by `bodyTargetY` every frame, so the above table is what
 actually happens regardless of metaVersion.
 
+### Rig coverage — which bones actually deform the mesh
+
+The rig dump shows 52 humanoid bones present, but most of them are
+**stub bones** — they exist in the VRM humanoid map but the mesh isn't
+skinned to them, so rotating them does nothing. Empirically confirmed
+by isolated `kohai_pose` tests:
+
+| Bone | Status | Use it? |
+|---|---|---|
+| `hips`, `spine`, `neck`, `head` | ✅ deforming | yes |
+| `leftEye`, `rightEye` | driven by `vrm.lookAt` | don't pose manually |
+| `chest`, `upperChest` | ❌ stub (no mesh weights) | **never** — pose `spine` instead |
+| `leftShoulder`, `rightShoulder` | ❌ stub | **never** — pose `upperArm` instead |
+| `leftUpperArm`/`rightUpperArm` … `leftHand`/`rightHand` | ✅ deforming | yes |
+| All finger bones (30 of them) | ❌ stub | **never** — fingers don't curl |
+| `leftUpperLeg`/`rightUpperLeg`, `leftLowerLeg`/`rightLowerLeg` | ✅ deforming | yes |
+| `leftFoot`/`rightFoot` | ✅ deforming | yes |
+| `leftToes`/`rightToes` | likely stub | avoid |
+| `jaw`, `leftThumbIntermediate`, `rightThumbIntermediate` | missing from rig | n/a |
+
+**Rule of thumb:** if a pose target has no visible effect after a 1.5 s
+settle, you're hitting a stub bone. Stick to the deforming list above.
+
 ### Bone-local axis convention (the part I kept getting wrong)
 
 Bone rotations passed to `kohai_pose` are **local to the bone's parent**.

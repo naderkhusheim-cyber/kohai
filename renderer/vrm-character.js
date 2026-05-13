@@ -267,34 +267,54 @@ function onVRMLoaded(gltf) {
     rightUpperLeg  = h.getNormalizedBoneNode('rightUpperLeg');
     leftLowerLeg   = h.getNormalizedBoneNode('leftLowerLeg');
     rightLowerLeg  = h.getNormalizedBoneNode('rightLowerLeg');
-    // RIG SANITY CHECK — dumps each bone's bind-pose orientation so we
-    // know empirically what axis means what. Output once per VRM load.
-    // Logs ALL THREE local axes (+X, +Y, +Z) in world space; this is
-    // what tells us "rotating around bone-local X rotates this world
-    // direction toward that world direction".
+    // RIG SANITY CHECK — dumps EVERY VRM humanoid bone, whether it
+    // exists or is missing, with bind-pose orientation. Lets us figure
+    // out if a "broken" gesture is broken because (a) we used the wrong
+    // axis or (b) the bone literally doesn't exist on this model
+    // (e.g., fingers, upper chest, eyes).
     try {
+      const VRM_BONES = [
+        'hips','spine','chest','upperChest','neck','head',
+        'leftEye','rightEye','jaw',
+        'leftShoulder','leftUpperArm','leftLowerArm','leftHand',
+        'rightShoulder','rightUpperArm','rightLowerArm','rightHand',
+        'leftThumbProximal','leftThumbIntermediate','leftThumbDistal',
+        'leftIndexProximal','leftIndexIntermediate','leftIndexDistal',
+        'leftMiddleProximal','leftMiddleIntermediate','leftMiddleDistal',
+        'leftRingProximal','leftRingIntermediate','leftRingDistal',
+        'leftLittleProximal','leftLittleIntermediate','leftLittleDistal',
+        'rightThumbProximal','rightThumbIntermediate','rightThumbDistal',
+        'rightIndexProximal','rightIndexIntermediate','rightIndexDistal',
+        'rightMiddleProximal','rightMiddleIntermediate','rightMiddleDistal',
+        'rightRingProximal','rightRingIntermediate','rightRingDistal',
+        'rightLittleProximal','rightLittleIntermediate','rightLittleDistal',
+        'leftUpperLeg','leftLowerLeg','leftFoot','leftToes',
+        'rightUpperLeg','rightLowerLeg','rightFoot','rightToes',
+      ];
+      const present = [];
+      const missing = [];
+      for (const name of VRM_BONES) {
+        const b = h.getNormalizedBoneNode(name);
+        if (b) present.push(name); else missing.push(name);
+      }
+      console.log(`[rig] PRESENT (${present.length}): ${present.join(', ')}`);
+      console.log(`[rig] MISSING (${missing.length}): ${missing.join(', ')}`);
+      // Also dump axis orientation of the bones we actually drive.
       const dump = (name, b) => {
-        if (!b) return console.log('[rig]', name, 'MISSING');
+        if (!b) return console.log('[rig-axes]', name, 'MISSING');
         const wq = new THREE.Quaternion();
         b.getWorldQuaternion(wq);
         const aX = new THREE.Vector3(1, 0, 0).applyQuaternion(wq);
         const aY = new THREE.Vector3(0, 1, 0).applyQuaternion(wq);
         const aZ = new THREE.Vector3(0, 0, 1).applyQuaternion(wq);
         const fmt = (v) => `(${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)})`;
-        console.log(`[rig] ${name}  +X→${fmt(aX)}  +Y→${fmt(aY)}  +Z→${fmt(aZ)}`);
+        console.log(`[rig-axes] ${name}  +X→${fmt(aX)}  +Y→${fmt(aY)}  +Z→${fmt(aZ)}`);
       };
-      dump('hips',          hips);
-      dump('spine',         spine);
-      dump('head',          headBone);
-      dump('leftUpperArm',  leftUpperArm);
-      dump('leftLowerArm',  leftLowerArm);
-      dump('leftHand',      leftHand);
+      dump('hips', hips);
+      dump('spine', spine);
+      dump('head', headBone);
+      dump('leftUpperArm', leftUpperArm);
       dump('rightUpperArm', rightUpperArm);
-      dump('rightLowerArm', rightLowerArm);
-      dump('rightHand',     rightHand);
-      dump('leftUpperLeg',  leftUpperLeg);
-      dump('rightUpperLeg', rightUpperLeg);
-      dump('leftLowerLeg',  leftLowerLeg);
     } catch (e) { console.warn('[rig] dump failed:', e.message); }
   }
   applyIdlePose();
@@ -445,6 +465,7 @@ function tickLipsync() {
 // Anyone can drive Kohai's body just by POSTing bone rotations.
 const poseTargets = new Map(); // boneId → { rx?, ry?, rz?, lerp? }
 function getBone(name) {
+  // First-tier: explicit slots the original renderer cached. Fast path.
   switch (name) {
     case 'head':           return headBone;
     case 'neck':           return neckBone;
@@ -460,8 +481,12 @@ function getBone(name) {
     case 'rightUpperLeg':  return rightUpperLeg;
     case 'leftLowerLeg':   return leftLowerLeg;
     case 'rightLowerLeg':  return rightLowerLeg;
-    default: return null;
   }
+  // Second-tier: any other VRM humanoid bone (chest, upperChest, shoulders,
+  // feet, toes, fingers, eyes, jaw). The rig sanity dump confirmed this
+  // model has 52 bones — we now expose ALL of them to kohai_pose.
+  if (!vrm || !vrm.humanoid) return null;
+  return vrm.humanoid.getNormalizedBoneNode(name);
 }
 function setPoseTarget(boneId, target) {
   if (!getBone(boneId)) return;

@@ -201,22 +201,20 @@ html, body {
    backrest flips to the wrong side and she ends up "facing" the chair. */
 .kohai-container[data-room="workspace"] .chair {
   opacity: 1;
-  /* Shift the chair LEFT so the backrest lands cleanly BEHIND her body
-     and doesn't extend past her right side. translateX(-65%) instead of
-     -50% pushes the chair ~15% further left = her back is properly
-     against the backrest, not embedded in it. Width 70% (was 80%) keeps
-     the chair from dwarfing her tiny body.
+  /* Center the chair on her body. The previous off-center offset was
+     tuned for turn=90 in a fullbody window; in a small/medium window
+     it pushed the chair off-screen and only the wheelbase showed.
+     With perspective rotation the chair tracks her body angle.
 
-     The CSS variable --body-turn is set by the turn handler in radians-
-     to-degrees form. The chair SVG is drawn in pure side-profile (her
-     body at +90°), so we subtract 90° from her turn to get the rotation
-     the chair needs to LOOK like it's seen from the same angle. With
-     perspective applied, the chair fakes a 3D rotation that tracks her. */
-  width: 70%;
-  left: 70%;
+     The CSS variable --body-turn is set by the turn handler in
+     degrees. The chair SVG is drawn in pure side-profile (her body
+     at +90°), so we subtract 90° from her turn to align the chair
+     to the same camera angle. */
+  width: 80%;
+  left: 50%;
   transform-origin: 50% 70%;
   transform:
-    translateX(-65%)
+    translateX(-50%)
     translateY(0)
     perspective(900px)
     rotateY(calc(var(--body-turn, 90deg) - 90deg));
